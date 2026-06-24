@@ -221,30 +221,6 @@ All geometry follows [REP-103](https://www.ros.org/reps/rep-0103.html) conventio
 
 ---
 
-## Roadmap
-
-- [x] 3D viewer with joint placement
-- [x] Joint library with search/filter
-- [x] Properties panel
-- [x] URDF/XACRO export
-- [x] SRDF export
-- [x] MoveIt 2 config export
-- [x] ROS 2 control config export
-- [x] CadQuery STEP template (revolute)
-- [x] Onshape API STEP export (ephemeral pipeline)
-- [x] Gear ratio → tooth count solver
-- [ ] GLB mesh loading (currently procedural placeholders)
-- [ ] Motor selection UI + catalog
-- [ ] Gearbox sizing wizard
-- [ ] STEP export from UI (async job queue)
-- [ ] Snap-to-connect joint assembly in viewer
-- [ ] Collision detection in viewer
-- [ ] `use_sim_time: true` for RViz2 (cosmetic clock-sync fix)
-- [ ] More joint types: prismatic, universal, spherical
-- [ ] Onshape App Store registration (removes annual API call limits)
-
----
-
 ## Design Principles
 
 **Schema-first.** The joint manifest schema is locked before any feature is built. It is the extensibility contract everything else depends on — locking it prevents downstream rework.
