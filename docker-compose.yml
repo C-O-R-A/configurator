@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  frontend:
+    build: ./apps/frontend
+    ports: ["5173:5173"]
+    volumes: ["./apps/frontend:/app", "/app/node_modules"]
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+  backend:
+    build: ./apps/backend
+    ports: ["8000:8000"]
+    volumes: ["./apps/backend:/app", "./packages:/packages"]
+    environment:
+      - JOINT_LIBRARY_PATH=/packages/joint-library
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]

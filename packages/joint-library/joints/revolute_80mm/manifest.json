@@ -1,0 +1,43 @@
+{
+  "id": "revolute_80mm",
+  "type": "revolute",
+  "displayName": "Revolute 80mm",
+  "description": "Compact revolute joint module with 80mm output flange. Suits elbow and wrist positions in 3–10kg payload cobots.",
+  "version": "1.0.0",
+  "params": {
+    "flange_diameter": 80,
+    "housing_diameter": 86,
+    "length": 65,
+    "mass": 0.85,
+    "inertia_ixx": 0.001,
+    "inertia_iyy": 0.001,
+    "inertia_izz": 0.0005,
+    "max_torque": 120,
+    "max_speed": 180
+  },
+  "mesh": {
+    "visual": "revolute_80mm_visual.glb",
+    "collision": "revolute_80mm_collision.glb"
+  },
+  "frames": {
+    "parent_attach": [0, 0, 0],
+    "child_attach": [0, 0, 65],
+    "motor_mount": [0, 0, 10]
+  },
+  "axis": [0, 0, 1],
+  "motor_interface": {
+    "type": "shaft",
+    "shaft_diameter": 10,
+    "flange_bolt_circle": 60,
+    "bolt_count": 4,
+    "bolt_size": "M5",
+    "max_motor_diameter": 60,
+    "max_motor_length": 80
+  },
+  "gearbox": {
+    "integrated": false,
+    "type": "none"
+  },
+  "cad_script": "revolute_80mm.py",
+  "tags": ["revolute", "compact", "series-80"]
+}

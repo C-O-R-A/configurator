@@ -1,0 +1,252 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9">
+  <diagram id="olBTiYhL3QU-o-xjZqQu" name="Page-1">
+    <mxGraphModel dx="1678" dy="1001" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CORA Configurator" style="text;html=1;strokeColor=none;fillColor=none;align=center;              verticalAlign=middle;whiteSpace=wrap;rounded=0;              fontSize=22;fontStyle=1;fontColor=#1a1a2e;" parent="1" vertex="1">
+          <mxGeometry x="790" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lane1_bg" value="" style="rounded=0;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=none;opacity=40;" parent="1" vertex="1">
+          <mxGeometry x="300.91" y="50" width="260" height="790" as="geometry" />
+        </mxCell>
+        <mxCell id="lane1_label" value="🖥️  Web Configurator (Frontend)" style="text;html=1;strokeColor=none;fillColor=none;align=center;              verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#005073;" parent="1" vertex="1">
+          <mxGeometry x="300.91" y="50" width="260" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2_bg" value="" style="rounded=0;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=none;opacity=40;" parent="1" vertex="1">
+          <mxGeometry x="580.91" y="50" width="280" height="790" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2_label" value="⚙️  FastAPI Backend" style="text;html=1;strokeColor=none;fillColor=none;align=center;              verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#1a5c2a;" parent="1" vertex="1">
+          <mxGeometry x="580.9100000000001" y="50" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane3_bg" value="" style="rounded=0;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=none;opacity=40;" parent="1" vertex="1">
+          <mxGeometry x="880.91" y="50" width="300" height="790" as="geometry" />
+        </mxCell>
+        <mxCell id="lane3_label" value="📐  Onshape CAD Export Pipeline" style="text;html=1;strokeColor=none;fillColor=none;align=center;              verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#7d5500;" parent="1" vertex="1">
+          <mxGeometry x="880.9100000000001" y="50" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane5_bg" value="" style="rounded=0;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=none;opacity=40;" parent="1" vertex="1">
+          <mxGeometry x="1200.91" y="50" width="260" height="790" as="geometry" />
+        </mxCell>
+        <mxCell id="lane5_label" value="📦  Export Artifacts" style="text;html=1;strokeColor=none;fillColor=none;align=center;              verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#4c0073;" parent="1" vertex="1">
+          <mxGeometry x="1200.91" y="50" width="260" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="user" value="👤 User" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontSize=13;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="365.91" y="100" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_configurator" value="Joint Configurator UI (React + TypeScript + Vite) • Joint type selector • Gear ratio input • 3D viewport preview" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontSize=11;align=left;spacingLeft=8;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="315.91" y="190" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_3d" value="3D Viewport (@react-three/fiber + drei) • Procedural geometry • GLB mesh swap-in (planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="315.91" y="320" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_state" value="Zustand State Store • Active joint config • Gear ratio / params • Export queue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="315.91" y="430" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_zod" value="Zod Schema Validation Joint Manifest Contract • Joint type, params • Gear ratio, module • Connector layout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="315.91" y="540" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_export_btn" value="Export Request POST /api/joints/export/step POST /api/joints/export/ros2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;              fontColor=#ffffff;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="315.91" y="660" width="230" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="be_fastapi" value="FastAPI Application main.py • /api/joints/export/step • /api/joints/export/ros2 • /api/joints/manifest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="100" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="be_registry" value="Joint Manifest Registry manifest.json (per joint type) • revolute_80mm • prismatic (planned) • spherical (planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="230" width="250" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="be_cadquery" value="CadQuery Engine Parametric STEP Generation • Procedural geometry fallback • Joint body, flanges," style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="350" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="be_jinja" value="Jinja2 Template Engine • URDF / XACRO generation • ros2_control YAML • MoveIt 2 SRDF • MoveIt config zip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="480" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="os_template" value="Master Joint Template Onshape Document • Parametric Part Studio • Config Variables:   num_teeth_input/output   gear_module, bore_dia   joint_length" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="100" width="265" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="os_copy" value="Copy Document POST /documents/{did}/w/{wid}/copy → new_did, new_wid (ephemeral, private)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="255" width="265" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="os_find_elem" value="Find Element by Name GET /documents/d/{did}/w/{wid}/elements → resolve eid in copy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="370" width="265" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="os_encode" value="Encode Configuration POST /elements/{did}/{eid}/configurationencodings gear_ratio_to_params() → encoded config string" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="475" width="265" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="os_translate" value="Async STEP Translation POST /partstudios/{did}/{wid}/{eid}/translations formatName: STEP, Z-up Poll → requestState == DONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="590" width="265" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="art_step" value="📄 STEP File Onshape-generated Authoritative CAD geometry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="100" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="art_urdf" value="📄 URDF / XACRO Robot description files Jinja2 templated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="205" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="art_ros2ctrl" value="📄 ros2_control YAML Controller config Per joint type" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="305" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="art_moveit_zip" value="📦 MoveIt Config ZIP Complete MoveIt 2 package launch/, config/, CMakeLists" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="505" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="art_mesh" value="📄 Mesh Files .stl / .dae / .glb Collision + visual geometry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="605" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e_user_ui" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="user" target="ui_configurator" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_3d" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="ui_configurator" target="ui_3d" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_state" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="ui_configurator" target="ui_state" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290.91" y="235" />
+              <mxPoint x="290.91" y="465" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_state_zod" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="ui_state" target="ui_zod" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_zod_export" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="ui_zod" target="ui_export_btn" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_export_be" value="HTTP POST" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0050ef;fontColor=#0050ef;fontStyle=1;fontSize=10;startArrow=oval;startFill=1;" parent="1" source="ui_export_btn" target="be_fastapi" edge="1">
+          <mxGeometry x="0.0252" y="31" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570.9100000000001" y="690" />
+              <mxPoint x="570.9100000000001" y="145" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ui_be_manifest" value="GET manifest" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;fontSize=10;dashed=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;startArrow=oval;startFill=1;" parent="1" source="ui_configurator" target="be_fastapi" edge="1">
+          <mxGeometry x="0.0818" y="10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="488.91" y="145" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_be_registry" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="be_fastapi" target="be_registry" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_be_cadq" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="be_registry" target="be_cadquery" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_be_jinja" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="be_cadquery" target="be_jinja" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_be_client" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="be_jinja" target="be_onshape_client" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_be_ephemeral" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="be_onshape_client" target="be_ephemeral" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_eph_copy" value="copy_document()" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;fontColor=#7d5500;fontStyle=1;fontSize=10;startArrow=oval;startFill=1;" parent="1" source="be_ephemeral" target="os_copy" edge="1">
+          <mxGeometry x="0.6859" y="-39" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870.9100000000001" y="765" />
+              <mxPoint x="870.9100000000001" y="293" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_template_copy" value="source" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#d6b656;fontSize=10;startArrow=oval;startFill=1;" parent="1" source="os_template" target="os_copy" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_copy_find" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="os_copy" target="os_find_elem" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_find_encode" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="os_find_elem" target="os_encode" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_encode_translate" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="os_encode" target="os_translate" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_translate_download" style="edgeStyle=orthogonalEdgeStyle;startArrow=oval;startFill=1;" parent="1" source="os_translate" target="os_download" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dl_step" value=".step" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;startArrow=oval;startFill=1;" parent="1" source="os_download" target="art_step" edge="1">
+          <mxGeometry x="-0.6784" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1490.91" y="743" />
+              <mxPoint x="1490.91" y="133" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_jinja_urdf" value="URDF/XACRO" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;exitX=0.64;exitY=0.978;exitDx=0;exitDy=0;exitPerimeter=0;startArrow=oval;startFill=1;" parent="1" source="be_jinja" target="art_urdf" edge="1">
+          <mxGeometry x="0.0396" y="-10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="756" y="700" />
+              <mxPoint x="1471" y="700" />
+              <mxPoint x="1471" y="238" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_jinja_ctrl" value="ros2_control" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;exitX=0.864;exitY=-0.022;exitDx=0;exitDy=0;exitPerimeter=0;startArrow=oval;startFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="be_jinja" target="art_ros2ctrl" edge="1">
+          <mxGeometry x="0.7154" y="-39" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="811.9100000000001" y="450" />
+              <mxPoint x="1190.91" y="450" />
+              <mxPoint x="1190.91" y="338" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_jinja_srdf" value="SRDF" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;exitX=0.75;exitY=0;exitDx=0;exitDy=0;startArrow=oval;startFill=1;" parent="1" source="be_jinja" target="art_srdf" edge="1">
+          <mxGeometry x="0.9297" y="-10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="783.9100000000001" y="460" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_jinja_zip" value="MoveIt zip" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=oval;startFill=1;" parent="1" source="be_jinja" target="art_moveit_zip" edge="1">
+          <mxGeometry x="0.227" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="783" y="690" />
+              <mxPoint x="1511" y="690" />
+              <mxPoint x="1511" y="537" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_cadq_mesh" value="mesh" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontColor=#4c0073;fontSize=10;startArrow=oval;startFill=1;entryX=0.534;entryY=-0.014;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="be_cadquery" target="art_mesh" edge="1">
+          <mxGeometry x="0.7708" y="-10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860.9100000000001" y="395" />
+              <mxPoint x="860.9100000000001" y="580" />
+              <mxPoint x="1335.91" y="580" />
+              <mxPoint x="1335.91" y="604" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="KbTbAk_uY34PjNDxw6F8-2" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="300" y="860" width="660" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;opacity=60;" parent="KbTbAk_uY34PjNDxw6F8-2" vertex="1">
+          <mxGeometry width="660" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_text" value="Legend:  ─── Data flow     - - - Config/file consumed by     🟦 Frontend     🟩 Backend     🟨 Onshape Pipeline     🟥 ROS 2 Stack     🟪 Artifacts" style="text;html=1;strokeColor=none;fillColor=none;align=left;              verticalAlign=middle;fontSize=10;fontColor=#333333;" parent="KbTbAk_uY34PjNDxw6F8-2" vertex="1">
+          <mxGeometry x="10" y="3" width="600" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="be_onshape_client" value="OnshapeClient (HMAC Auth) • Async httpx session • Wraps REST API calls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="610" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="art_srdf" value="📄 MoveIt 2 SRDF Planning groups Collision pairs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="1215.91" y="405" width="225" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="be_ephemeral" value="EphemeralExporter Context Manager • async with lifecycle • Copy → Export → Delete • Exception-safe cleanup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="595.9100000000001" y="720" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="os_download" value="Download STEP GET /documents/{did}/externaldata/{id} → binary .step bytes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;              fontSize=11;align=left;spacingLeft=8;" parent="1" vertex="1">
+          <mxGeometry x="895.9100000000001" y="710" width="265" height="65" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
