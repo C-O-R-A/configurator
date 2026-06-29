@@ -133,30 +133,19 @@ CORA uses the Onshape REST API to generate authoritative STEP files from fully p
 ### How it works
 
 ```
-User requests STEP export
+User requests Onshape export
         │
         ▼
-POST /documents/{did}/w/{wid}/copy          → ephemeral copy (private, invisible to user)
+POST /documents/{did}/w/{wid}/copy          → Copy Onshape template doc
         │
         ▼
-GET  /documents/d/{did}/w/{wid}/elements    → resolve element ID by name in the copy
+DELETE /documents/{ephemeral_did}           → Delete Unused joints/parts
         │
         ▼
-POST /elements/{did}/{eid}/configurationencodings
-     gear_ratio_to_params(5.0) → num_teeth_input=12, num_teeth_output=60
+       (?)                                  → Assemble robot according to robot config json
         │
         ▼
-POST /partstudios/{did}/{wid}/{eid}/translations
-     formatName: STEP, poll until requestState == DONE
-        │
-        ▼
-GET  /documents/{did}/externaldata/{id}     → download binary STEP
-        │
-        ▼
-DELETE /documents/{ephemeral_did}           → cleanup (runs even on exception)
-        │
-        ▼
-FileResponse → user downloads .step
+       (?)                                  -> share/link to onshape doc
 ```
 
 ### Configuration variables
@@ -173,20 +162,9 @@ Each master joint document exposes these Onshape Configuration Variables:
 
 `gear_ratio_to_params()` converts a float ratio (e.g. `5.0`) to the nearest valid integer tooth-count pair within physical constraints.
 
-### When you don't need the copy/delete pipeline
+<!-- ### When you don't need the copy/delete pipeline
 
-If all parameters are exposed as Onshape Configuration Variables, the config is applied per-request as a stateless microversion parameter — the original document is never touched and concurrent users can't interfere. The ephemeral copy pipeline is used when you need to modify feature variables directly in the feature tree, or for future "save to my Onshape account" functionality.
-
-### API limits
-
-Onshape enforces annual API call limits per account (enforced from 2025). The ephemeral pipeline costs approximately 7–15 calls per export (including translation polling). To avoid hitting limits at scale:
-
-- Prefer pure configuration parameter exports (2–3 calls each) over the copy pipeline where possible
-- Register CORA as a public **Onshape App Store** app — publicly listed apps using OAuth2 are currently exempt from annual limits
-- Cache manifest and element discovery responses; avoid repeat calls for static data
-- Monitor `X-Rate-Limit-Remaining` response headers
-
-For App Store registration, contact [onshape-developer-relations@ptc.com](mailto:onshape-developer-relations@ptc.com).
+If all parameters are exposed as Onshape Configuration Variables, the config is applied per-request as a stateless microversion parameter — the original document is never touched and concurrent users can't interfere. The ephemeral copy pipeline is used when you need to modify feature variables directly in the feature tree, or for future "save to my Onshape account" functionality. -->
 
 ---
 
@@ -207,26 +185,15 @@ All geometry follows [REP-103](https://www.ros.org/reps/rep-0103.html) conventio
 
 ---
 
-## ROS 2 / Simulation Stack
+### API limits
 
-| Component | Role |
-|---|---|
-| ROS 2 Jazzy | Core runtime, DDS middleware |
-| ros2_control | Hardware interface, joint state broadcaster |
-| Gazebo (gz_ros2_control) | Physics + sensor simulation |
-| MoveIt 2 | Motion planning (CHOMP active) |
-| RViz2 | Visualisation and planning scene |
-
-**ABI note:** Local workspace builds must be sourced *after* the system ROS 2 install. Wipe `build/`, `install/`, `log/` when switching overlay configurations to avoid silent ABI mismatches (historically the root cause of `gz_ros2_control` segfaults).
+Onshape enforces annual API call limits per account (enforced from 2025). The ephemeral pipeline costs approximately 7–15 calls per export (including translation polling).
 
 ---
 
-## Design Principles
-
-**Schema-first.** The joint manifest schema is locked before any feature is built. It is the extensibility contract everything else depends on — locking it prevents downstream rework.
-
-**Zero code changes to add a joint.** Drop a folder, get full software and export support automatically. The backend discovers joints at startup by scanning the library directory.
-
-**Ephemeral CAD isolation.** User STEP exports never touch the master template. Each request gets its own throwaway Onshape document, isolated from all other concurrent requests.
-
-**REP-103 throughout.** Z-up, metres, radians at every layer — URDF, XACRO, ros2_control YAML, MoveIt SRDF, and CadQuery scripts all share the same convention. No silent unit conversions.
+# Notes
+1. Robot Configs: Simple overview of all existing project configs
+2. Configurator: Actual robot configurator window
+3. Export: For selecting export options and artifacts, should also display follow up steps
+4. Motor and joint setup: Hardware setup from the script created in the other board. Should also run some tests
+5. Robot assembly and setup: Runs a setup and test script to see if everything is there, like all the joints, homing sequence etc.

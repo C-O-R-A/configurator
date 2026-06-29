@@ -113,9 +113,8 @@ function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => 
       <div style={styles.cardInfo}>
         <div style={styles.cardName}>{manifest.displayName}</div>
         <div style={styles.cardMeta}>
-          {manifest.params.flange_diameter}mm flange
-          {manifest.params.max_torque ? ` · ${manifest.params.max_torque}Nm` : ''}
-          {manifest.params.max_force ? ` · ${manifest.params.max_force}N` : ''}
+          {manifest.specs?.max_torque ? ` · ${manifest.specs.max_torque}Nm` : ''}
+          {manifest.specs?.max_speed ? ` · ${manifest.specs.max_speed}N` : ''}
         </div>
         {manifest.gearbox?.integrated && (
           <div style={styles.cardTag}>

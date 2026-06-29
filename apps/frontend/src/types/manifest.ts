@@ -29,18 +29,19 @@ export const JointManifestSchema = z.object({
   version: z.string().default('1.0.0'),
 
   // Physical parameters
-  params: z.object({
-    flange_diameter: z.number(),           // mm — output flange
-    housing_diameter: z.number(),          // mm — outer body
-    length: z.number(),                    // mm — total axial length
-    mass: z.number(),                      // kg
-    inertia_ixx: z.number(),               // kg·m²
-    inertia_iyy: z.number(),
-    inertia_izz: z.number(),
-    max_torque: z.number().optional(),     // Nm (revolute/universal/spherical)
-    max_force: z.number().optional(),      // N  (prismatic)
-    stroke: z.number().optional(),         // mm (prismatic)
-    max_speed: z.number().optional(),      // RPM or mm/s
+  parameters: z.object({
+    limits: z.object({
+      min: z.number(),
+      max: z.number(),
+    }),
+    reduction_ratio: z.number().optional(),
+    axis: z.array(z.number()).optional(),
+  }),
+
+  specs: z.object({
+    mass: z.number(),
+    max_torque: z.number().optional(),
+    max_speed: z.number().optional(),
   }),
 
   // Mesh files (relative to manifest location)
@@ -51,11 +52,12 @@ export const JointManifestSchema = z.object({
 
   // Coordinate frames — where things connect
   // These are offsets from the joint's own origin (0,0,0)
-  frames: z.object({
-    parent_attach: Vec3Schema,             // XYZ in mm — where parent link connects
-    child_attach: Vec3Schema,              // XYZ in mm — where child link connects
-    motor_mount: Vec3Schema.optional(),    // XYZ in mm — motor face center
-  }),
+  connectors: z.array(z.object({
+    name: z.string(),
+    origin: Vec3Schema,
+    axes: z.tuple([Vec3Schema, Vec3Schema, Vec3Schema]),
+    type: z.enum(['flange_input','flange_output','motor_mount','sensor_port','generic']).default('generic'),
+  })).default([]),
 
   // Joint axis in local frame
   axis: Vec3Schema.default([0, 0, 1]),
@@ -76,7 +78,7 @@ export const JointManifestSchema = z.object({
   gearbox: z.object({
     integrated: z.boolean().default(false),
     ratio: z.number().optional(),          // if integrated/fixed
-    type: z.enum(['planetary', 'harmonic', 'spur', 'none']).default('none'),
+    type: z.enum(['planetary', 'harmonic', 'spur', 'wolfrom', 'none']).default('none'),
   }).optional(),
 
   // CadQuery script for parametric STEP generation

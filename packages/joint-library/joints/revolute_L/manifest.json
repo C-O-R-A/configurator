@@ -1,0 +1,47 @@
+{
+  "id": "revolute_L",
+  "type": "revolute",
+  "displayName": "Revolute Large",
+  "description": "Large size revolute joint",
+  "version": "1.0.0",
+  "specs": {
+    "mass": 1.6,
+    "max_torque": 120,
+    "max_speed": 180
+  },
+  "parameters": {
+    "limits": {
+      "min": -3.14159,
+      "max": 3.14159
+    },
+    "reduction_ratio": 200.0,
+    "axis": [0, 0, 1]
+  },
+  "mesh": {
+    "visual": "urdf/meshes/revolute_l_visual.glb",
+    "collision": "urdf/meshes/revolute_l_collision.stl"
+  },
+  "connectors": [
+    {
+      "name": "joint_in",
+      "origin": [0.0, 0.0, 0.0],
+      "axes": [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+    },
+    {
+      "name": "joint_out",
+      "origin": [0.0, 0.0, 0.0],
+      "axes": [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,-1.0]]
+    }
+  ],
+  "cad": {
+    "cad_folder":"Revolute_L"
+  },
+  "motor_interface": {
+    "max_motor_diameter": 60.0,
+    "max_motor_length": 80.0
+  },
+  "gearbox": {
+    "integrated": false,
+    "type": "wolfrom"
+  }
+}
