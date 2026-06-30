@@ -80,10 +80,10 @@ export function Viewport3D() {
             <Grid
               args={[10, 10]}
               cellSize={0.1}
-              cellThickness={0.5}
+              cellThickness={1.0}
               cellColor="#1e2a38"
               sectionSize={0.5}
-              sectionThickness={1}
+              sectionThickness={2}
               sectionColor="#1e3a58"
               fadeDistance={8}
               fadeStrength={1}
