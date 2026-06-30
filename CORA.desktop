@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=CORA Configurator
+Exec=/home/matth/Desktop/CORA/Software/configurator/run.sh
+Icon=/home/matth/Desktop/CORA/Software/configurator/assets/icon.png
+Type=Application
+Terminal=false

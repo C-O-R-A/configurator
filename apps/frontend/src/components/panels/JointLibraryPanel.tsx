@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRobotStore } from '../../store/robotStore'
 import type { JointManifest, JointType } from '../../types/manifest'
+import { COLORS } from '../../theme'
 
 const TYPE_BADGE_COLORS: Record<JointType, string> = {
   revolute:   '#0077b6',
@@ -41,7 +42,6 @@ export function JointLibraryPanel() {
         <span style={styles.count}>{library.length}</span>
       </div>
 
-      {/* Search */}
       <div style={styles.searchWrap}>
         <input
           style={styles.search}
@@ -51,7 +51,6 @@ export function JointLibraryPanel() {
         />
       </div>
 
-      {/* Type filter pills */}
       <div style={styles.filterRow}>
         {(['all', 'revolute', 'prismatic', 'universal', 'spherical', 'fixed'] as const).map(t => (
           <button
@@ -59,9 +58,9 @@ export function JointLibraryPanel() {
             onClick={() => setFilterType(t)}
             style={{
               ...styles.pill,
-              background: filterType === t ? 'rgba(0,229,255,0.12)' : 'transparent',
-              border: filterType === t ? '1px solid rgba(0,229,255,0.5)' : '1px solid rgba(255,255,255,0.07)',
-              color: filterType === t ? '#00e5ff' : '#6a7a90',
+              background: filterType === t ? COLORS.accentDim : 'transparent',
+              border: filterType === t ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
+              color: filterType === t ? COLORS.accent : COLORS.textSecondary,
             }}
           >
             {t === 'all' ? 'All' : t}
@@ -69,7 +68,6 @@ export function JointLibraryPanel() {
         ))}
       </div>
 
-      {/* Joint cards */}
       <div style={styles.list}>
         {libraryLoading ? (
           <div style={styles.empty}>Loading…</div>
@@ -99,17 +97,15 @@ function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => 
       style={{
         ...styles.card,
         background: hovered ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-        border: hovered ? '1px solid rgba(0,229,255,0.2)' : '1px solid rgba(255,255,255,0.06)',
+        border: hovered ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Icon */}
       <div style={{ ...styles.cardIcon, background: color + '22', color }}>
         {icon}
       </div>
 
-      {/* Info */}
       <div style={styles.cardInfo}>
         <div style={styles.cardName}>{manifest.displayName}</div>
         <div style={styles.cardMeta}>
@@ -123,7 +119,6 @@ function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => 
         )}
       </div>
 
-      {/* Add button */}
       <button
         onClick={onAdd}
         title="Add to scene"
@@ -142,8 +137,8 @@ const styles: Record<string, React.CSSProperties> = {
   panel: {
     width: 260,
     height: '100%',
-    background: '#10141c',
-    borderRight: '1px solid rgba(255,255,255,0.06)',
+    background: COLORS.panel,
+    borderRight: `1px solid ${COLORS.border}`,
     display: 'flex',
     flexDirection: 'column',
     fontFamily: 'Inter, sans-serif',
@@ -151,7 +146,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     padding: '16px 16px 12px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: `1px solid ${COLORS.border}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -159,14 +154,14 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 11,
     fontWeight: 600,
-    color: '#8a9ab0',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
     fontFamily: 'IBM Plex Mono, monospace',
   },
   count: {
     fontSize: 10,
-    color: '#4a5568',
+    color: COLORS.textDim,
     background: 'rgba(255,255,255,0.06)',
     padding: '2px 7px',
     borderRadius: 10,
@@ -179,7 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: 6,
     padding: '6px 10px',
-    color: '#e0e8f0',
+    color: COLORS.textPrimary,
     fontSize: 12,
     outline: 'none',
     fontFamily: 'Inter, sans-serif',
@@ -209,7 +204,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 4,
   },
   empty: {
-    color: '#4a5568',
+    color: COLORS.textDim,
     fontSize: 12,
     textAlign: 'center',
     padding: 24,
@@ -248,9 +243,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: 26,
     height: 26,
     borderRadius: 5,
-    background: 'rgba(0, 229, 255, 0.15)',
-    border: '1px solid rgba(0,229,255,0.3)',
-    color: '#00e5ff',
+    background: COLORS.accentDim,
+    border: `1px solid ${COLORS.accentBorder}`,
+    color: COLORS.accent,
     fontSize: 16,
     cursor: 'pointer',
     display: 'flex',

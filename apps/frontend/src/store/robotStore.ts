@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
-import type { SceneJoint, JointManifest, MotorConfig, GearboxConfig } from '../types/manifest'
+import type { SceneJoint, JointManifest } from '../types/manifest'
 
 interface RobotStore {
   // ── Joint library (fetched from backend) ──────────────────────────────────
@@ -19,8 +19,6 @@ interface RobotStore {
   selectJoint: (instanceId: string | null) => void
   moveJoint: (instanceId: string, position: [number, number, number]) => void
   rotateJoint: (instanceId: string, rotation: [number, number, number]) => void
-  setMotor: (instanceId: string, motor: MotorConfig | null) => void
-  setGearbox: (instanceId: string, gearbox: GearboxConfig | null) => void
   renameLink: (instanceId: string, linkName: string) => void
   connectJoint: (childId: string, parentId: string | null) => void
   clearScene: () => void
@@ -67,7 +65,7 @@ export const useRobotStore = create<RobotStore>()(
           ? [
               parent.position[0],
               parent.position[1],
-              parent.position[2] + manifest.params.length / 1000 + 0.05,
+              parent.position[2],
             ]
           : [0, 0, 0]
 
@@ -79,8 +77,6 @@ export const useRobotStore = create<RobotStore>()(
           rotation: [0, 0, 0],
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
-          motorConfig: null,
-          gearboxConfig: null,
           linkName: `link_${n}`,
           jointName: `joint_${n}`,
         }
@@ -127,20 +123,6 @@ export const useRobotStore = create<RobotStore>()(
         set(state => ({
           joints: state.joints.map(j =>
             j.instanceId === instanceId ? { ...j, rotation } : j
-          ),
-        })),
-
-      setMotor: (instanceId, motor) =>
-        set(state => ({
-          joints: state.joints.map(j =>
-            j.instanceId === instanceId ? { ...j, motorConfig: motor } : j
-          ),
-        })),
-
-      setGearbox: (instanceId, gearbox) =>
-        set(state => ({
-          joints: state.joints.map(j =>
-            j.instanceId === instanceId ? { ...j, gearboxConfig: gearbox } : j
           ),
         })),
 

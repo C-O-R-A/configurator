@@ -47,7 +47,7 @@ export const JointManifestSchema = z.object({
   // Mesh files (relative to manifest location)
   mesh: z.object({
     visual: z.string(),                    // .glb for viewer
-    collision: z.string(),                 // simplified .glb for collision
+    collision: z.string(),                 // stl for collision
   }),
 
   // Coordinate frames — where things connect
@@ -106,58 +106,9 @@ export interface SceneJoint {
   parentInstanceId: string | null
   childInstanceIds: string[]
   
-  // Per-instance overrides
-  motorConfig: MotorConfig | null
-  gearboxConfig: GearboxConfig | null
-  
   // URDF link/joint naming
   linkName: string               // e.g. "link_1"
   jointName: string              // e.g. "joint_1"
-}
-
-// ─── Motor Types ─────────────────────────────────────────────────────────────
-
-export const MotorSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  manufacturer: z.string().optional(),
-  type: MotorInterfaceTypeSchema,
-  
-  // Mounting
-  body_diameter: z.number(),             // mm
-  body_length: z.number(),               // mm
-  shaft_diameter: z.number().optional(), // mm
-  bore_diameter: z.number().optional(),  // mm (hollow)
-  flange_bolt_circle: z.number(),        // mm
-  bolt_count: z.number().int(),
-  bolt_size: z.string(),
-  
-  // Performance
-  rated_torque: z.number(),              // Nm
-  rated_speed: z.number(),               // RPM
-  rated_power: z.number(),               // W
-  peak_torque: z.number().optional(),    // Nm
-  
-  // Electrical
-  voltage: z.number().optional(),        // V
-  encoder_ppr: z.number().optional(),    // pulses per rev
-  
-  // Source
-  catalog: z.enum(['standard', 'custom']).default('standard'),
-})
-export type MotorSchema = z.infer<typeof MotorSchema>
-export type MotorConfig = z.infer<typeof MotorSchema>
-
-// ─── Gearbox Types ───────────────────────────────────────────────────────────
-
-export interface GearboxConfig {
-  id: string
-  type: 'planetary' | 'harmonic' | 'spur'
-  ratio: number
-  efficiency: number             // 0–1
-  max_input_speed: number        // RPM
-  max_output_torque: number      // Nm
-  catalog: 'standard' | 'custom'
 }
 
 // ─── Export Request Types ────────────────────────────────────────────────────

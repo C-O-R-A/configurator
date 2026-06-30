@@ -1,10 +1,11 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useMemo } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
 import { TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { JointMesh } from './JointMesh'
 import { useRobotStore } from '../../store/robotStore'
 import type { SceneJoint } from '../../types/manifest'
+import { COLORS } from '../../theme'
 
 interface JointInstanceProps {
   joint: SceneJoint
@@ -44,8 +45,8 @@ export function JointInstance({ joint, isSelected, transformMode }: JointInstanc
     rotateJoint(joint.instanceId, [rot.x, rot.y, rot.z])
   }, [joint.instanceId, moveJoint, rotateJoint])
 
-  // Convert mm frames to meters for rendering
-  const parentAttach = joint.manifest.frames.parent_attach
+  const outputConnector = joint.manifest.connectors.find(c => c.type === 'flange_output') ?? joint.manifest.connectors[0]
+  const labelHeight = outputConnector ? outputConnector.origin[2] + 0.03 : 0.1
   const p = joint.position
 
   return (
@@ -64,15 +65,13 @@ export function JointInstance({ joint, isSelected, transformMode }: JointInstanc
           hovered={hovered}
         />
 
-        {/* Link name label (HTML overlay) */}
         {(isSelected || hovered) && (
-          <group position={[0, 0, joint.manifest.params.length / 1000 + 0.03]}>
+          <group position={[0, 0, labelHeight]}>
             {/* Billboard text handled in parent canvas via Html component */}
           </group>
         )}
       </group>
 
-      {/* Transform gizmo when selected */}
       {isSelected && groupRef.current && transformMode && (
         <TransformControls
           object={groupRef.current}
@@ -82,10 +81,7 @@ export function JointInstance({ joint, isSelected, transformMode }: JointInstanc
         />
       )}
 
-      {/* Connection line to parent */}
-      {joint.parentInstanceId && (
-        <ConnectionLine joint={joint} />
-      )}
+      {joint.parentInstanceId && <ConnectionLine joint={joint} />}
     </>
   )
 }
@@ -93,23 +89,33 @@ export function JointInstance({ joint, isSelected, transformMode }: JointInstanc
 function ConnectionLine({ joint }: { joint: SceneJoint }) {
   const joints = useRobotStore(s => s.joints)
   const parent = joints.find(j => j.instanceId === joint.parentInstanceId)
-  if (!parent) return null
 
-  const start = new THREE.Vector3(...parent.position).add(
-    new THREE.Vector3(
-      parent.manifest.frames.child_attach[0] / 1000,
-      parent.manifest.frames.child_attach[1] / 1000,
-      parent.manifest.frames.child_attach[2] / 1000,
-    )
-  )
-  const end = new THREE.Vector3(...joint.position)
+  const lineObject = useMemo(() => {
+    if (!parent) return null
 
-  const points = [start, end]
-  const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const outputConnector = parent.manifest.connectors.find(c => c.type === 'flange_output') ?? parent.manifest.connectors[0]
+    const offset = outputConnector
+      ? new THREE.Vector3(
+          outputConnector.origin[0],
+          outputConnector.origin[1],
+          outputConnector.origin[2],
+        )
+      : new THREE.Vector3(0, 0, 0)
 
-  return (
-    <line geometry={geometry}>
-      <lineBasicMaterial color="#00e5ff" opacity={0.4} transparent linewidth={1} />
-    </line>
-  )
+    const start = new THREE.Vector3(...parent.position).add(offset)
+    const end = new THREE.Vector3(...joint.position)
+
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
+    const material = new THREE.LineBasicMaterial({
+      color: COLORS.accent,
+      opacity: 0.4,
+      transparent: true,
+    })
+
+    return new THREE.Line(geometry, material)
+  }, [parent, joint.position])
+
+  if (!lineObject) return null
+
+  return <primitive object={lineObject} />
 }

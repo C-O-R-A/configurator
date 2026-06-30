@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRobotStore } from '../../store/robotStore'
+import { COLORS } from '../../theme'
 
 export function PropertiesPanel() {
   const { joints, selectedId, removeJoint, renameLink, selectJoint } = useRobotStore()
@@ -16,7 +17,7 @@ export function PropertiesPanel() {
     )
   }
 
-  const { manifest, motorConfig, gearboxConfig } = joint
+  const { manifest } = joint
 
   return (
     <div style={styles.panel}>
@@ -32,7 +33,6 @@ export function PropertiesPanel() {
       </div>
 
       <div style={styles.body}>
-        {/* Identity */}
         <Section label="Joint">
           <Field label="Type" value={manifest.type} mono />
           <Field label="Model" value={manifest.displayName} />
@@ -44,31 +44,19 @@ export function PropertiesPanel() {
           <Field label="Joint name" value={joint.jointName} mono />
         </Section>
 
-        {/* Geometry */}
         <Section label="Geometry">
-          <Field label="Flange ⌀" value={`${manifest.params.flange_diameter} mm`} mono />
-          <Field label="Housing ⌀" value={`${manifest.params.housing_diameter} mm`} mono />
-          <Field label="Length" value={`${manifest.params.length} mm`} mono />
-          <Field label="Mass" value={`${manifest.params.mass} kg`} mono />
+          <Field label="Mass" value={`${manifest.specs.mass} kg`} mono />
         </Section>
 
-        {/* Performance */}
         <Section label="Performance">
-          {manifest.params.max_torque && (
-            <Field label="Max torque" value={`${manifest.params.max_torque} Nm`} mono />
+          {manifest.specs.max_torque && (
+            <Field label="Max torque" value={`${manifest.specs.max_torque} Nm`} mono />
           )}
-          {manifest.params.max_force && (
-            <Field label="Max force" value={`${manifest.params.max_force} N`} mono />
-          )}
-          {manifest.params.stroke && (
-            <Field label="Stroke" value={`${manifest.params.stroke} mm`} mono />
-          )}
-          {manifest.params.max_speed && (
-            <Field label="Max speed" value={`${manifest.params.max_speed} RPM`} mono />
+          {manifest.specs.max_speed && (
+            <Field label="Max speed" value={`${manifest.specs.max_speed} RPM`} mono />
           )}
         </Section>
 
-        {/* Motor interface */}
         <Section label="Motor Interface">
           <Field label="Type" value={manifest.motor_interface.type} mono />
           <Field label="Bolt circle" value={`⌀${manifest.motor_interface.flange_bolt_circle} mm`} mono />
@@ -76,7 +64,6 @@ export function PropertiesPanel() {
           <Field label="Max motor ⌀" value={`${manifest.motor_interface.max_motor_diameter} mm`} mono />
         </Section>
 
-        {/* Gearbox (if integrated) */}
         {manifest.gearbox?.integrated && (
           <Section label="Integrated Gearbox">
             <Field label="Type" value={manifest.gearbox.type} mono />
@@ -86,7 +73,6 @@ export function PropertiesPanel() {
           </Section>
         )}
 
-        {/* Position (read-only display) */}
         <Section label="Transform">
           <Field
             label="Position"
@@ -100,20 +86,6 @@ export function PropertiesPanel() {
           />
         </Section>
 
-        {/* Motor assignment */}
-        <Section label="Motor">
-          {motorConfig ? (
-            <>
-              <Field label="Name" value={motorConfig.name} />
-              <Field label="Rated torque" value={`${motorConfig.rated_torque} Nm`} mono />
-              <Field label="Rated speed" value={`${motorConfig.rated_speed} RPM`} mono />
-            </>
-          ) : (
-            <div style={styles.unassigned}>No motor assigned</div>
-          )}
-        </Section>
-
-        {/* Parent/child */}
         <Section label="Kinematic Chain">
           <Field
             label="Parent"
@@ -193,8 +165,8 @@ const styles: Record<string, React.CSSProperties> = {
   panel: {
     width: 240,
     height: '100%',
-    background: '#10141c',
-    borderLeft: '1px solid rgba(255,255,255,0.06)',
+    background: COLORS.panel,
+    borderLeft: `1px solid ${COLORS.border}`,
     display: 'flex',
     flexDirection: 'column',
     fontFamily: 'Inter, sans-serif',
@@ -202,7 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     padding: '16px 16px 12px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: `1px solid ${COLORS.border}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -210,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 11,
     fontWeight: 600,
-    color: '#8a9ab0',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
     fontFamily: 'IBM Plex Mono, monospace',
@@ -226,14 +198,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   body: { flex: 1, overflowY: 'auto', padding: '4px 0' },
   empty: {
-    color: '#4a5568',
+    color: COLORS.textDim,
     fontSize: 12,
     textAlign: 'center',
     padding: 24,
     fontFamily: 'IBM Plex Mono, monospace',
   },
   unassigned: {
-    color: '#4a5568',
+    color: COLORS.textDim,
     fontSize: 11,
     fontFamily: 'IBM Plex Mono, monospace',
     padding: '2px 0',
@@ -261,10 +233,10 @@ const styles: Record<string, React.CSSProperties> = {
   fieldLabel: { fontSize: 11, color: '#6a7a90', flexShrink: 0 },
   fieldValue: { fontSize: 11, color: '#b0c4d8', textAlign: 'right', wordBreak: 'break-all' },
   inlineInput: {
-    background: 'rgba(0,229,255,0.08)',
-    border: '1px solid rgba(0,229,255,0.4)',
+    background: COLORS.accentGlow,
+    border: `1px solid ${COLORS.accentBorder}`,
     borderRadius: 4,
-    color: '#00e5ff',
+    color: COLORS.accent,
     fontSize: 11,
     padding: '2px 6px',
     fontFamily: 'IBM Plex Mono, monospace',

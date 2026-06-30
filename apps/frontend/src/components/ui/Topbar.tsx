@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRobotStore } from '../../store/robotStore'
+import { COLORS } from '../../theme'
 
 export function Topbar() {
   const { robotName, setRobotName, joints, clearScene, toggleGrid, gridVisible } = useRobotStore()
@@ -38,15 +39,13 @@ export function Topbar() {
 
   return (
     <div style={styles.bar}>
-      {/* Logo */}
       <div style={styles.logo}>
-        <span style={styles.logoMark}>◈</span>
-        <span style={styles.logoText}>cobotkit</span>
+        <img src="/logo.png" alt="CORA" style={{ width: 18, height: 18 }} />
+        <span style={styles.logoText}>Configurator</span>
       </div>
 
       <div style={styles.divider} />
 
-      {/* Robot name */}
       <div style={styles.nameWrap}>
         <span style={styles.nameLabel}>Robot:</span>
         {editingName ? (
@@ -67,7 +66,6 @@ export function Topbar() {
 
       <div style={styles.spacer} />
 
-      {/* Stats */}
       <div style={styles.stat}>
         <span style={styles.statValue}>{joints.length}</span>
         <span style={styles.statLabel}>joints</span>
@@ -75,7 +73,6 @@ export function Topbar() {
 
       <div style={styles.divider} />
 
-      {/* Actions */}
       <button onClick={toggleGrid} style={styles.iconBtn} title="Toggle grid">
         {gridVisible ? '⊞' : '⊟'}
       </button>
@@ -106,8 +103,8 @@ export function Topbar() {
 const styles: Record<string, React.CSSProperties> = {
   bar: {
     height: 48,
-    background: '#0d1117',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
+    background: COLORS.background,
+    borderBottom: `1px solid ${COLORS.border}`,
     display: 'flex',
     alignItems: 'center',
     padding: '0 16px',
@@ -116,17 +113,16 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 100,
   },
   logo: { display: 'flex', alignItems: 'center', gap: 7 },
-  logoMark: { fontSize: 16, color: '#00e5ff' },
   logoText: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#e0e8f0',
+    color: COLORS.textPrimary,
     fontFamily: 'IBM Plex Mono, monospace',
     letterSpacing: '0.05em',
   },
   divider: { width: 1, height: 20, background: 'rgba(255,255,255,0.08)' },
   nameWrap: { display: 'flex', alignItems: 'center', gap: 7 },
-  nameLabel: { fontSize: 11, color: '#4a5568', fontFamily: 'IBM Plex Mono, monospace' },
+  nameLabel: { fontSize: 11, color: COLORS.textDim, fontFamily: 'IBM Plex Mono, monospace' },
   nameValue: {
     fontSize: 12,
     color: '#b0c4d8',
@@ -137,10 +133,10 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid transparent',
   },
   nameInput: {
-    background: 'rgba(0,229,255,0.08)',
-    border: '1px solid rgba(0,229,255,0.4)',
+    background: COLORS.accentGlow,
+    border: `1px solid ${COLORS.accentBorder}`,
     borderRadius: 5,
-    color: '#00e5ff',
+    color: COLORS.accent,
     fontSize: 12,
     padding: '3px 8px',
     fontFamily: 'IBM Plex Mono, monospace',
@@ -148,22 +144,22 @@ const styles: Record<string, React.CSSProperties> = {
   },
   spacer: { flex: 1 },
   stat: { display: 'flex', alignItems: 'baseline', gap: 4 },
-  statValue: { fontSize: 14, color: '#e0e8f0', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 500 },
-  statLabel: { fontSize: 10, color: '#4a5568', fontFamily: 'IBM Plex Mono, monospace' },
+  statValue: { fontSize: 14, color: COLORS.textPrimary, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 500 },
+  statLabel: { fontSize: 10, color: COLORS.textDim, fontFamily: 'IBM Plex Mono, monospace' },
   iconBtn: {
     background: 'transparent',
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: 5,
-    color: '#8a9ab0',
+    color: COLORS.textSecondary,
     padding: '4px 9px',
     cursor: 'pointer',
     fontSize: 13,
   },
   exportBtn: {
-    background: 'rgba(0,229,255,0.12)',
-    border: '1px solid rgba(0,229,255,0.35)',
+    background: COLORS.accentDim,
+    border: `1px solid ${COLORS.accentBorder}`,
     borderRadius: 6,
-    color: '#00e5ff',
+    color: COLORS.accent,
     padding: '6px 16px',
     cursor: 'pointer',
     fontSize: 12,

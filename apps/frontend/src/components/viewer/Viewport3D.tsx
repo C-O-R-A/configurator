@@ -1,8 +1,9 @@
 import { useState, useCallback, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Html, Environment } from '@react-three/drei'
+import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei'
 import { JointInstance } from './JointInstance'
 import { useRobotStore } from '../../store/robotStore'
+import { COLORS } from '../../theme'
 
 type TransformMode = 'translate' | 'rotate' | null
 
@@ -16,11 +17,10 @@ export function Viewport3D() {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Transform mode toolbar */}
       <div style={{
         position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
         zIndex: 10, display: 'flex', gap: 4, background: 'rgba(16,20,28,0.85)',
-        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '4px 6px',
+        border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '4px 6px',
         backdropFilter: 'blur(8px)',
       }}>
         {(['translate', 'rotate'] as const).map(mode => (
@@ -28,9 +28,9 @@ export function Viewport3D() {
             key={mode}
             onClick={() => setTransformMode(transformMode === mode ? null : mode)}
             style={{
-              background: transformMode === mode ? 'rgba(0,229,255,0.15)' : 'transparent',
-              border: transformMode === mode ? '1px solid #00e5ff' : '1px solid transparent',
-              color: transformMode === mode ? '#00e5ff' : '#8a9ab0',
+              background: transformMode === mode ? COLORS.accentDim : 'transparent',
+              border: transformMode === mode ? `1px solid ${COLORS.accent}` : '1px solid transparent',
+              color: transformMode === mode ? COLORS.accent : COLORS.textSecondary,
               borderRadius: 5,
               padding: '4px 12px',
               cursor: 'pointer',
@@ -60,12 +60,11 @@ export function Viewport3D() {
       <Canvas
         camera={{ position: [0.5, 0.5, 1.2], fov: 45, near: 0.001, far: 100 }}
         gl={{ antialias: true, alpha: false }}
-        style={{ background: '#0d1117' }}
+        style={{ background: COLORS.background }}
         onClick={handleCanvasClick}
         shadows
       >
         <Suspense fallback={null}>
-          {/* Lighting */}
           <ambientLight intensity={0.4} />
           <directionalLight
             position={[3, 5, 3]}
@@ -75,10 +74,8 @@ export function Viewport3D() {
           />
           <pointLight position={[-2, 2, -2]} intensity={0.5} color="#4080ff" />
 
-          {/* Environment */}
-          <fog attach="fog" args={['#0d1117', 8, 25]} />
+          <fog attach="fog" args={[COLORS.background, 8, 25]} />
 
-          {/* Grid */}
           {gridVisible && (
             <Grid
               args={[10, 10]}
@@ -96,10 +93,8 @@ export function Viewport3D() {
             />
           )}
 
-          {/* World origin indicator */}
           <WorldOrigin />
 
-          {/* All placed joints */}
           {joints.map(joint => (
             <JointInstance
               key={joint.instanceId}
@@ -109,7 +104,6 @@ export function Viewport3D() {
             />
           ))}
 
-          {/* Camera controls (disabled when transform gizmo is active) */}
           <OrbitControls
             makeDefault
             enableDamping
@@ -118,7 +112,6 @@ export function Viewport3D() {
             maxDistance={10}
           />
 
-          {/* Orientation cube */}
           <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
             <GizmoViewport
               axisColors={['#ff4444', '#44ff44', '#4488ff']}
@@ -134,22 +127,18 @@ export function Viewport3D() {
 function WorldOrigin() {
   return (
     <group>
-      {/* X axis — red */}
       <mesh position={[0.05, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
         <meshBasicMaterial color="#ff4444" />
       </mesh>
-      {/* Y axis — green */}
       <mesh position={[0, 0.05, 0]}>
         <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
         <meshBasicMaterial color="#44ff44" />
       </mesh>
-      {/* Z axis — blue */}
       <mesh position={[0, 0, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
         <meshBasicMaterial color="#4488ff" />
       </mesh>
-      {/* Origin sphere */}
       <mesh>
         <sphereGeometry args={[0.006, 8, 8]} />
         <meshBasicMaterial color="#ffffff" />
