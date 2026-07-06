@@ -31,9 +31,9 @@ def _joint_limits(req: ExportRequest) -> str:
             continue
 
         if m.type in ("revolute", "continuous", "universal", "spherical"):
-            max_vel = (m.params.max_speed or 180) * math.pi / 180
+            max_vel = (m.specs.max_speed or 180) * math.pi / 180
             max_acc = max_vel * 0.5
-            max_eff = m.params.max_torque or 10.0
+            max_eff = m.specs.max_torque or 10.0
             lines += [
                 f"  {j.jointName}:",
                 f"    has_velocity_limits: true",
@@ -44,9 +44,9 @@ def _joint_limits(req: ExportRequest) -> str:
                 f"    max_effort: {max_eff:.2f}",
             ]
         elif m.type == "prismatic":
-            max_vel = m.params.max_speed or 0.1
+            max_vel = m.specs.max_speed or 0.1
             max_acc = max_vel * 0.5
-            max_eff = m.params.max_force or 100.0
+            max_eff = m.specs.max_force or 100.0
             lines += [
                 f"  {j.jointName}:",
                 f"    has_velocity_limits: true",

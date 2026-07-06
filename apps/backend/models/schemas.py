@@ -66,11 +66,21 @@ class JointManifest(BaseModel):
     specs:           JointSpecs
     parameters:      JointParameters
     mesh:            MeshPaths
+    urdf:            str
     connectors:      list[Connector] = Field(default_factory=list)
     motor_interface: MotorInterface
     gearbox:         Optional[GearboxSpec] = None
     cad:             Optional[Cad]         = None
     tags:            list[str]             = Field(default_factory=list)
+
+class LinkManifest(BaseModel):
+    id:          str
+    displayName: str
+    description: Optional[str] = None
+    version:     str           = "1.0.0"
+    connectors:   list[Connector] = Field(default_factory=list)
+    mesh:        MeshPaths
+    cad:         Optional[Cad] = None
 
 
 class MotorConfig(BaseModel):
@@ -114,13 +124,23 @@ class SceneJoint(BaseModel):
     childInstanceIds: list[str]               = Field(default_factory=list)
     motorConfig:      Optional[MotorConfig]   = None
     gearboxConfig:    Optional[GearboxConfig] = None
-    linkName:         str
     jointName:        str
+    input:            Optional[Literal["joint_in", "joint_out"]] = None
+    parent_connector: Optional[Literal["joint_in", "joint_out"]] = None
 
+class SceneLink(BaseModel):
+    instanceId: str
+    linkName:   str
+    length:     float
+    mass:       float
+    inertia_ixx: float
+    inertia_iyy: float
+    inertia_izz: float
 
 class ExportRequest(BaseModel):
     robot_name:     str
     joints:         list[SceneJoint]
+    links:          list[SceneLink] = []
     export_formats: list[Literal[
         "urdf", "urdf_xacro", "srdf", "ros2_control", "moveit_config", "step"
     ]] = ["urdf_xacro", "srdf"]

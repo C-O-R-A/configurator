@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useRobotStore } from '../../store/robotStore'
 import type { JointManifest, JointType } from '../../types/manifest'
 import { COLORS } from '../../theme'
+import { ConnectJointDialog } from '../ui/ConnectJointDialogue'
+
+type ConnectorName = 'joint_in' | 'joint_out'
 
 const TYPE_BADGE_COLORS: Record<JointType, string> = {
   revolute:   '#0077b6',
@@ -22,9 +25,12 @@ const TYPE_ICONS: Record<JointType, string> = {
 }
 
 export function JointLibraryPanel() {
-  const { library, libraryLoading, addJoint, selectedId } = useRobotStore()
-  const [search, setSearch] = useState('')
-  const [filterType, setFilterType] = useState<JointType | 'all'>('all')
+  const { library, libraryLoading, addJoint, selectedId, joints } = useRobotStore()
+  const [search, setSearch]           = useState('')
+  const [filterType, setFilterType]   = useState<JointType | 'all'>('all')
+  const [pendingManifest, setPendingManifest] = useState<JointManifest | null>(null)
+
+  const selectedJoint = joints.find(j => j.instanceId === selectedId) ?? null
 
   const filtered = library.filter(j => {
     const matchSearch =
@@ -35,69 +41,107 @@ export function JointLibraryPanel() {
     return matchSearch && matchType
   })
 
+  const handleAdd = (manifest: JointManifest) => {
+    if (selectedJoint) {
+      // A joint is already selected — ask which connectors to wire
+      setPendingManifest(manifest)
+    } else {
+      // No parent — add as root joint, no dialog needed
+      addJoint(manifest)
+    }
+  }
+
+  const handleConfirm = (
+    childConnector:  ConnectorName,
+    parentConnector: ConnectorName,
+  ) => {
+    if (!pendingManifest || !selectedId) return
+    addJoint(pendingManifest, selectedId, childConnector, parentConnector)
+    setPendingManifest(null)
+  }
+
   return (
-    <div style={styles.panel}>
-      <div style={styles.header}>
-        <span style={styles.title}>Joint Library</span>
-        <span style={styles.count}>{library.length}</span>
-      </div>
+    <>
+      <div style={styles.panel}>
+        <div style={styles.header}>
+          <span style={styles.title}>Joint Library</span>
+          <span style={styles.count}>{library.length}</span>
+        </div>
 
-      <div style={styles.searchWrap}>
-        <input
-          style={styles.search}
-          placeholder="Search joints…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
+        <div style={styles.searchWrap}>
+          <input
+            style={styles.search}
+            placeholder="Search joints…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
 
-      <div style={styles.filterRow}>
-        {(['all', 'revolute', 'prismatic', 'universal', 'spherical', 'fixed'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setFilterType(t)}
-            style={{
-              ...styles.pill,
-              background: filterType === t ? COLORS.accentDim : 'transparent',
-              border: filterType === t ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
-              color: filterType === t ? COLORS.accent : COLORS.textSecondary,
-            }}
-          >
-            {t === 'all' ? 'All' : t}
-          </button>
-        ))}
-      </div>
+        <div style={styles.filterRow}>
+          {(['all', 'revolute', 'prismatic', 'universal', 'spherical', 'fixed'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              style={{
+                ...styles.pill,
+                background: filterType === t ? COLORS.accentDim    : 'transparent',
+                border:     filterType === t ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
+                color:      filterType === t ? COLORS.accent        : COLORS.textSecondary,
+              }}
+            >
+              {t === 'all' ? 'All' : t}
+            </button>
+          ))}
+        </div>
 
-      <div style={styles.list}>
-        {libraryLoading ? (
-          <div style={styles.empty}>Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div style={styles.empty}>No joints found</div>
-        ) : (
-          filtered.map(j => (
-            <JointCard
-              key={j.id}
-              manifest={j}
-              onAdd={() => addJoint(j, selectedId ?? undefined)}
-            />
-          ))
+        {/* Hint when a joint is selected */}
+        {selectedJoint && (
+          <div style={styles.selectionHint}>
+            + will connect to <strong>{selectedJoint.jointName}</strong>
+          </div>
         )}
+
+        <div style={styles.list}>
+          {libraryLoading ? (
+            <div style={styles.empty}>Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div style={styles.empty}>No joints found</div>
+          ) : (
+            filtered.map(j => (
+              <JointCard
+                key={j.id}
+                manifest={j}
+                onAdd={() => handleAdd(j)}
+              />
+            ))
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Dialog renders outside the panel div so it overlays everything */}
+      {pendingManifest && selectedJoint && (
+        <ConnectJointDialog
+          childName={pendingManifest.displayName}
+          parentName={selectedJoint.jointName}
+          onConfirm={handleConfirm}
+          onCancel={() => setPendingManifest(null)}
+        />
+      )}
+    </>
   )
 }
 
 function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => void }) {
   const [hovered, setHovered] = useState(false)
   const color = TYPE_BADGE_COLORS[manifest.type]
-  const icon = TYPE_ICONS[manifest.type]
+  const icon  = TYPE_ICONS[manifest.type]
 
   return (
     <div
       style={{
         ...styles.card,
         background: hovered ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-        border: hovered ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
+        border:     hovered ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -109,8 +153,8 @@ function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => 
       <div style={styles.cardInfo}>
         <div style={styles.cardName}>{manifest.displayName}</div>
         <div style={styles.cardMeta}>
-          {manifest.specs?.max_torque ? ` · ${manifest.specs.max_torque}Nm` : ''}
-          {manifest.specs?.max_speed ? ` · ${manifest.specs.max_speed}N` : ''}
+          {manifest.specs?.max_torque ? `${manifest.specs.max_torque}Nm` : ''}
+          {manifest.specs?.max_speed  ? ` · ${manifest.specs.max_speed}RPM` : ''}
         </div>
         {manifest.gearbox?.integrated && (
           <div style={styles.cardTag}>
@@ -122,10 +166,7 @@ function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => 
       <button
         onClick={onAdd}
         title="Add to scene"
-        style={{
-          ...styles.addBtn,
-          opacity: hovered ? 1 : 0.4,
-        }}
+        style={{ ...styles.addBtn, opacity: hovered ? 1 : 0.4 }}
       >
         +
       </button>
@@ -194,6 +235,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'IBM Plex Mono, monospace',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
+  },
+  selectionHint: {
+    fontSize: 10,
+    color: COLORS.textDim,
+    fontFamily: 'IBM Plex Mono, monospace',
+    padding: '4px 14px 6px',
+    borderBottom: `1px solid ${COLORS.border}`,
   },
   list: {
     flex: 1,

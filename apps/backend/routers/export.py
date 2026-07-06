@@ -1,7 +1,10 @@
-import io
-import zipfile
+import os
+from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+import io
+import zipfile
+
 from models.schemas import ExportRequest
 from services.urdf_generator import generate_urdf_xacro, generate_srdf
 from services.ros2_control_generator import generate_ros2_control
@@ -9,34 +12,51 @@ from services.moveit_generator import generate_moveit_config
 
 router = APIRouter(tags=["export"])
 
+JOINT_LIBRARY = Path(__file__).parent.parent.parent.parent / "packages" / "joint-library"
+
 
 @router.post("/export")
 def export_robot(request: ExportRequest):
-    """Generate and return a zip of all requested robot config files."""
-    buf = io.BytesIO()
+    buf  = io.BytesIO()
     name = request.robot_name
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         fmt = set(request.export_formats)
 
+        # ── Main robot URDF ──────────────────────────────────────────────────
         if "urdf_xacro" in fmt or "urdf" in fmt:
-            content = generate_urdf_xacro(request)
-            zf.writestr(f"{name}/{name}.urdf.xacro", content)
+            zf.writestr(f"{name}/{name}.urdf.xacro", generate_urdf_xacro(request))
 
         if "srdf" in fmt:
-            content = generate_srdf(request)
-            zf.writestr(f"{name}/{name}.srdf", content)
+            zf.writestr(f"{name}/{name}.srdf", generate_srdf(request))
 
         if "ros2_control" in fmt:
-            content = generate_ros2_control(request)
-            zf.writestr(f"{name}/config/ros2_controllers.yaml", content)
+            zf.writestr(f"{name}/config/ros2_controllers.yaml", generate_ros2_control(request))
 
         if "moveit_config" in fmt:
-            files = generate_moveit_config(request)
-            for filename, content in files.items():
+            for filename, content in generate_moveit_config(request).items():
                 zf.writestr(f"{name}/config/{filename}", content)
 
-        # Always include a README
+        # ── Per-joint XACRO files ─────────────────────────────────────────────
+        # Each unique joint type gets its own folder in the zip matching the
+        # expected ROS 2 package structure: {joint_id}_description/urdf/
+        seen_joint_types: set[str] = set()
+        for joint in request.joints:
+            jid = joint.manifest.id
+            if jid in seen_joint_types:
+                continue
+            seen_joint_types.add(jid)
+
+            joint_dir = JOINT_LIBRARY / "joints" / jid / "urdf"
+            if not joint_dir.exists():
+                continue
+
+            # Copy every file in the joint's urdf/ folder
+            for file in joint_dir.rglob("*"):
+                if file.is_file():
+                    rel = file.relative_to(JOINT_LIBRARY / "joints" / jid)
+                    zf.write(file, f"{jid}_description/{rel}")
+
         zf.writestr(f"{name}/README.md", _readme(request))
 
     buf.seek(0)
@@ -49,7 +69,7 @@ def export_robot(request: ExportRequest):
 
 def _readme(req: ExportRequest) -> str:
     joint_list = "\n".join(
-        f"  - {j.linkName} ({j.manifest.type}, {j.manifest.displayName})"
+        f"  - {j.jointName} ({j.manifest.type}, {j.manifest.displayName})"
         for j in req.joints
     )
     return f"""# {req.robot_name} — Robot Configuration

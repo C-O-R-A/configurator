@@ -1,13 +1,19 @@
 {
   "name": "cobot-configurator",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=apps/frontend\" \"npm run dev --workspace=apps/backend\"",
     "dev:frontend": "npm run dev --workspace=apps/frontend",
-    "build": "npm run build --workspace=apps/frontend"
+    "build": "npm run build --workspace=apps/frontend",
+    "start": "electron electron.js"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
-  }
+    "concurrently": "^8.2.0",
+    "electron": "^43.0.0"
+  },
+  "main": "electron.js"
 }

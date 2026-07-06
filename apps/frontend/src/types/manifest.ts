@@ -94,9 +94,13 @@ export type JointManifest = z.infer<typeof JointManifestSchema>
 // These represent the robot being built in the configurator
 
 export interface SceneJoint {
+  // URDF link/joint naming
+  jointName: string              // e.g. "J1"
   instanceId: string             // uuid — unique per placed joint
   manifestId: string             // which joint type from the library
   manifest: JointManifest
+  input:            'joint_in' | 'joint_out' | null
+  parent_connector: 'joint_in' | 'joint_out' | null
   
   // World-space transform (meters, radians — ROS REP-103)
   position: Vec3
@@ -106,9 +110,6 @@ export interface SceneJoint {
   parentInstanceId: string | null
   childInstanceIds: string[]
   
-  // URDF link/joint naming
-  linkName: string               // e.g. "link_1"
-  jointName: string              // e.g. "joint_1"
 }
 
 // ─── Export Request Types ────────────────────────────────────────────────────

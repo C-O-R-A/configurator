@@ -3,7 +3,7 @@ import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
 
 export function PropertiesPanel() {
-  const { joints, selectedId, removeJoint, renameLink, selectJoint } = useRobotStore()
+  const { joints, selectedId, removeJoint, renameJoint, selectJoint } = useRobotStore()
   const joint = joints.find(j => j.instanceId === selectedId)
 
   if (!joint) {
@@ -37,11 +37,10 @@ export function PropertiesPanel() {
           <Field label="Type" value={manifest.type} mono />
           <Field label="Model" value={manifest.displayName} />
           <EditableField
-            label="Link name"
-            value={joint.linkName}
-            onChange={v => renameLink(joint.instanceId, v)}
+            label="Joint name"
+            value={joint.jointName}
+            onChange={v => renameJoint(joint.instanceId, v)}
           />
-          <Field label="Joint name" value={joint.jointName} mono />
         </Section>
 
         <Section label="Geometry">
@@ -91,7 +90,7 @@ export function PropertiesPanel() {
             label="Parent"
             value={
               joint.parentInstanceId
-                ? joints.find(j => j.instanceId === joint.parentInstanceId)?.linkName ?? '—'
+                ? joints.find(j => j.instanceId === joint.parentInstanceId)?.jointName ?? '—'
                 : 'base_link (root)'
             }
           />
@@ -100,7 +99,7 @@ export function PropertiesPanel() {
             value={
               joint.childInstanceIds.length > 0
                 ? joint.childInstanceIds
-                    .map(id => joints.find(j => j.instanceId === id)?.linkName ?? id.slice(0, 8))
+                    .map(id => joints.find(j => j.instanceId === id)?.jointName ?? id.slice(0, 8))
                     .join(', ')
                 : 'none'
             }

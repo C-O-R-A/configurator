@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type { SceneJoint, JointManifest } from '../types/manifest'
+import * as THREE from 'three'
 
 interface RobotStore {
   // ── Joint library (fetched from backend) ──────────────────────────────────
@@ -14,13 +15,18 @@ interface RobotStore {
   selectedId: string | null
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  addJoint: (manifest: JointManifest, parentId?: string) => void
+  addJoint: (manifest: JointManifest, parentId?: string, childConnector?: 'joint_in' | 'joint_out' | null, parentConnector?: 'joint_in' | 'joint_out' | null) => void
   removeJoint: (instanceId: string) => void
   selectJoint: (instanceId: string | null) => void
+  renameJoint: (instanceId: string, newName: string) => void
   moveJoint: (instanceId: string, position: [number, number, number]) => void
   rotateJoint: (instanceId: string, rotation: [number, number, number]) => void
-  renameLink: (instanceId: string, linkName: string) => void
-  connectJoint: (childId: string, parentId: string | null) => void
+  connectJoint: (
+    childId: string,
+    parentId: string | null,
+    childConnector: 'joint_in' | 'joint_out',
+    parentConnector: 'joint_in' | 'joint_out'
+  ) => void
   clearScene: () => void
 
   // ── UI state ───────────────────────────────────────────────────────────────
@@ -55,30 +61,93 @@ export const useRobotStore = create<RobotStore>()(
         }
       },
 
-      addJoint: (manifest, parentId) => {
+      addJoint: (manifest, parentId, childConnector, parentConnector) => {
         const n = ++linkCounter
         const instanceId = uuid()
 
-        // Default position: stack above parent or at origin
         const parent = parentId ? get().joints.find(j => j.instanceId === parentId) : null
-        const defaultPosition: [number, number, number] = parent
-          ? [
-              parent.position[0],
-              parent.position[1],
-              parent.position[2],
-            ]
-          : [0, 0, 0]
+
+        let defaultPosition: [number, number, number] = [0, 0, 0]
+        let defaultRotation: [number, number, number] = [0, 0, 0]
+
+      if (parent && parentConnector && childConnector) {
+        const parentConn = parent.manifest.connectors.find(c => c.name === parentConnector)
+        const childConn  = manifest.connectors.find(c => c.name === childConnector)
+
+        if (parentConn && childConn) {
+          // ── Parent connector world transform ──────────────────────────────────
+          const parentWorldQuat = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(parent.rotation[0], parent.rotation[1], parent.rotation[2], 'XYZ')
+          )
+
+          // Parent connector position in world space
+          const parentConnWorldPos = new THREE.Vector3(
+            parentConn.origin[0] / 1000,
+            parentConn.origin[1] / 1000,
+            parentConn.origin[2] / 1000,
+          ).applyQuaternion(parentWorldQuat).add(new THREE.Vector3(...parent.position))
+
+          // Parent connector orientation in world space
+          // axes columns are [X, Y, Z] of the connector frame
+          const parentConnMat = new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(...parentConn.axes[0]),
+            new THREE.Vector3(...parentConn.axes[1]),
+            new THREE.Vector3(...parentConn.axes[2]),
+          )
+          const parentConnWorldQuat = new THREE.Quaternion()
+            .setFromRotationMatrix(parentConnMat)
+            .premultiply(parentWorldQuat)
+
+          // ── Child connector local transform ───────────────────────────────────
+          const childConnLocalPos = new THREE.Vector3(
+            childConn.origin[0] / 1000,
+            childConn.origin[1] / 1000,
+            childConn.origin[2] / 1000,
+          )
+
+          const childConnLocalMat = new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(...childConn.axes[0]),
+            new THREE.Vector3(...childConn.axes[1]),
+            new THREE.Vector3(...childConn.axes[2]),
+          )
+          const childConnLocalQuat = new THREE.Quaternion()
+            .setFromRotationMatrix(childConnLocalMat)
+
+          // ── Compute child world transform so connectors align ─────────────────
+          // We want: parentConnWorldQuat = childWorldQuat * childConnLocalQuat
+          // So:      childWorldQuat = parentConnWorldQuat * inv(childConnLocalQuat)
+          const childWorldQuat = parentConnWorldQuat
+            .clone()
+            .multiply(childConnLocalQuat.clone().invert())
+
+          // Child origin in world space:
+          // childConnWorldPos = childWorldPos + childWorldQuat * childConnLocalPos
+          // So: childWorldPos = childConnWorldPos - childWorldQuat * childConnLocalPos
+          const childConnLocalPosRotated = childConnLocalPos
+            .clone()
+            .applyQuaternion(childWorldQuat)
+
+          const childWorldPos = parentConnWorldPos.clone().sub(childConnLocalPosRotated)
+
+          // Extract euler from quaternion
+          const childEuler = new THREE.Euler().setFromQuaternion(childWorldQuat, 'XYZ')
+
+          defaultPosition = [childWorldPos.x, childWorldPos.y, childWorldPos.z]
+          defaultRotation = [childEuler.x, childEuler.y, childEuler.z]
+        }
+      }
 
         const newJoint: SceneJoint = {
           instanceId,
-          manifestId: manifest.id,
+          manifestId:       manifest.id,
           manifest,
-          position: defaultPosition,
-          rotation: [0, 0, 0],
+          position:         defaultPosition,
+          rotation:         defaultRotation,
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
-          linkName: `link_${n}`,
-          jointName: `joint_${n}`,
+          jointName:        `J${n}`,
+          input:            childConnector ?? null,
+          parent_connector: parentConnector ?? null,
         }
 
         set(state => {
@@ -110,40 +179,39 @@ export const useRobotStore = create<RobotStore>()(
         })
       },
 
-      selectJoint: (instanceId) => set({ selectedId: instanceId }),
+      renameJoint: (instanceId: string, newName: string) => {
+        set(state => ({
+          joints: state.joints.map(j =>
+            j.instanceId === instanceId ? { ...j, jointName: newName } : j
+          ),
+        }))
+      },
 
-      moveJoint: (instanceId, position) =>
+      selectJoint: (instanceId: string | null) => set({ selectedId: instanceId }),
+
+      moveJoint: (instanceId: string, position: [number, number, number]) =>
         set(state => ({
           joints: state.joints.map(j =>
             j.instanceId === instanceId ? { ...j, position } : j
           ),
         })),
 
-      rotateJoint: (instanceId, rotation) =>
+      rotateJoint: (instanceId: string, rotation: [number, number, number]) =>
         set(state => ({
           joints: state.joints.map(j =>
             j.instanceId === instanceId ? { ...j, rotation } : j
           ),
         })),
 
-      renameLink: (instanceId, linkName) =>
-        set(state => ({
-          joints: state.joints.map(j =>
-            j.instanceId === instanceId ? { ...j, linkName } : j
-          ),
-        })),
-
-      connectJoint: (childId, parentId) =>
+      connectJoint: (childId, parentId, childConnector, parentConnector) =>
         set(state => ({
           joints: state.joints.map(j => {
-            if (j.instanceId === childId) return { ...j, parentInstanceId: parentId }
+            if (j.instanceId === childId)
+              return { ...j, parentInstanceId: parentId, input: childConnector, parent_connector: parentConnector }
             if (j.instanceId === parentId)
               return { ...j, childInstanceIds: [...j.childInstanceIds, childId] }
-            // Remove from old parent
-            if (j.childInstanceIds.includes(childId))
-              return { ...j, childInstanceIds: j.childInstanceIds.filter(id => id !== childId) }
             return j
-          }),
+          })
         })),
 
       clearScene: () => {

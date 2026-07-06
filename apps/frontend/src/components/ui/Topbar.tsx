@@ -18,6 +18,7 @@ export function Topbar() {
         body: JSON.stringify({
           robot_name: robotName,
           joints,
+          links: [],
           export_formats: ['urdf_xacro', 'srdf', 'ros2_control', 'moveit_config'],
         }),
       })

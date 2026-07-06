@@ -1,5 +1,5 @@
 {
-  "id": "revolute_L",
+  "id": "revolute_l",
   "type": "revolute",
   "displayName": "Revolute Large",
   "description": "Large size revolute joint",
@@ -21,16 +21,19 @@
     "visual": "urdf/meshes/revolute_l_visual.glb",
     "collision": "urdf/meshes/revolute_l_collision.stl"
   },
+  "urdf": "urdf/revolute_l.xacro",
   "connectors": [
     {
-      "name": "joint_in",
-      "origin": [0.0, 0.0, 0.0],
-      "axes": [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+      "name": "joint_out",
+      "origin": [0.0, 0.0, 70.002],
+      "axes": [[0.0,-1.0,0.0],[1.0,0.0,0.0],[0.0,0.0,1.0]],
+      "type": "flange_input"
     },
     {
-      "name": "joint_out",
-      "origin": [0.0, 0.0, 0.0],
-      "axes": [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,-1.0]]
+      "name": "joint_in",
+      "origin": [0.0, -88.002, 0.0],
+      "axes": [[0.0,0.0,1.0],[0.0,1.0,0.0],[-1.0,0.0,0.0]],
+      "type": "flange_output"
     }
   ],
   "cad": {

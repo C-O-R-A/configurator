@@ -1,19 +1,71 @@
-import { useState, useCallback, Suspense } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei'
+import { OrbitControls, Grid, GizmoHelper, GizmoViewport, TransformControls } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { JointInstance } from './JointInstance'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
 
 type TransformMode = 'translate' | 'rotate' | null
 
+function CameraSetup() {
+  const { camera } = useThree()
+  useEffect(() => {
+    camera.up.set(0, 0, 1)
+    camera.position.set(1.2, -1.2, 0.8)
+    camera.lookAt(0, 0, 0)
+  }, [camera])
+  return null
+}
+
+function WorldOrigin() {
+  return (
+    <group>
+      <mesh position={[0.05, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
+        <meshBasicMaterial color="#ff4444" />
+      </mesh>
+      <mesh position={[0, 0, -0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
+        <meshBasicMaterial color="#44ff44" />
+      </mesh>
+      <mesh position={[0, 0.05, 0]} rotation={[0, 0, 0]}>
+        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
+        <meshBasicMaterial color="#4488ff" />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[0.006, 8, 8]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+    </group>
+  )
+}
+
 export function Viewport3D() {
   const { joints, selectedId, selectJoint, gridVisible } = useRobotStore()
-  const [transformMode, setTransformMode] = useState<TransformMode>('translate')
+  const [transformMode, setTransformMode]     = useState<TransformMode>('translate')
+  const [selectedNode, setSelectedNode]       = useState<THREE.Group | null>(null)
+  const [moveJoint, rotateJoint]              = useRobotStore(s => [s.moveJoint, s.rotateJoint])
 
-  const handleCanvasClick = useCallback(() => {
-    selectJoint(null)
-  }, [selectJoint])
+  // Clear selected node when selection changes
+  useEffect(() => {
+    setSelectedNode(null)
+  }, [selectedId])
+
+  const handleNodeReady = useCallback((instanceId: string, node: THREE.Group | null) => {
+    if (instanceId === selectedId) {
+      setSelectedNode(node)
+    }
+  }, [selectedId])
+
+  const handleTransformChange = useCallback(() => {
+    if (!selectedNode || !selectedId) return
+    const pos = selectedNode.position
+    const rot = selectedNode.rotation
+    moveJoint(selectedId, [pos.x, pos.y, pos.z])
+    rotateJoint(selectedId, [rot.x, rot.y, rot.z])
+  }, [selectedNode, selectedId, moveJoint, rotateJoint])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -28,9 +80,9 @@ export function Viewport3D() {
             key={mode}
             onClick={() => setTransformMode(transformMode === mode ? null : mode)}
             style={{
-              background: transformMode === mode ? COLORS.accentDim : 'transparent',
-              border: transformMode === mode ? `1px solid ${COLORS.accent}` : '1px solid transparent',
-              color: transformMode === mode ? COLORS.accent : COLORS.textSecondary,
+              background: transformMode === mode ? COLORS.accentDim    : 'transparent',
+              border:     transformMode === mode ? `1px solid ${COLORS.accent}` : '1px solid transparent',
+              color:      transformMode === mode ? COLORS.accent        : COLORS.textSecondary,
               borderRadius: 5,
               padding: '4px 12px',
               cursor: 'pointer',
@@ -52,19 +104,21 @@ export function Viewport3D() {
           zIndex: 5, pointerEvents: 'none', textAlign: 'center',
         }}>
           <div style={{ color: 'rgba(138,154,176,0.4)', fontSize: 13, fontFamily: 'IBM Plex Mono, monospace' }}>
-            drag a joint from the panel →
+            click + on a joint to place it
           </div>
         </div>
       )}
 
       <Canvas
-        camera={{ position: [0.5, 0.5, 1.2], fov: 45, near: 0.001, far: 100 }}
+        camera={{ fov: 45, near: 0.001, far: 100 }}
         gl={{ antialias: true, alpha: false }}
         style={{ background: COLORS.background }}
-        onClick={handleCanvasClick}
+        onPointerMissed={() => selectJoint(null)}
         shadows
       >
         <Suspense fallback={null}>
+          <CameraSetup />
+
           <ambientLight intensity={0.4} />
           <directionalLight
             position={[3, 5, 3]}
@@ -73,36 +127,48 @@ export function Viewport3D() {
             shadow-mapSize={[2048, 2048]}
           />
           <pointLight position={[-2, 2, -2]} intensity={0.5} color="#4080ff" />
-
           <fog attach="fog" args={[COLORS.background, 8, 25]} />
 
-          {gridVisible && (
-            <Grid
-              args={[10, 10]}
-              cellSize={0.1}
-              cellThickness={1.0}
-              cellColor="#1e2a38"
-              sectionSize={0.5}
-              sectionThickness={2}
-              sectionColor="#1e3a58"
-              fadeDistance={8}
-              fadeStrength={1}
-              followCamera={false}
-              infiniteGrid
-              position={[0, 0, 0]}
+          {/* TransformControls at scene root — not inside rotated group */}
+          {selectedId && selectedNode && transformMode && (
+            <TransformControls
+              object={selectedNode}
+              mode={transformMode}
+              onObjectChange={handleTransformChange}
+              size={0.6}
             />
           )}
 
-          <WorldOrigin />
+          {/* Z-up scene */}
+          <group rotation={[Math.PI / 2, 0, 0]}>
+            {gridVisible && (
+              <Grid
+                args={[10, 10]}
+                cellSize={0.1}
+                cellThickness={1.0}
+                cellColor="#1e2a38"
+                sectionSize={0.5}
+                sectionThickness={2}
+                sectionColor="#1e3a58"
+                fadeDistance={8}
+                fadeStrength={1}
+                followCamera={false}
+                infiniteGrid
+                position={[0, 0, 0]}
+              />
+            )}
 
-          {joints.map(joint => (
-            <JointInstance
-              key={joint.instanceId}
-              joint={joint}
-              isSelected={joint.instanceId === selectedId}
-              transformMode={selectedId === joint.instanceId ? transformMode : null}
-            />
-          ))}
+            <WorldOrigin />
+
+            {joints.map(joint => (
+              <JointInstance
+                key={joint.instanceId}
+                joint={joint}
+                isSelected={joint.instanceId === selectedId}
+                onNodeReady={(node) => handleNodeReady(joint.instanceId, node)}
+              />
+            ))}
+          </group>
 
           <OrbitControls
             makeDefault
@@ -110,9 +176,14 @@ export function Viewport3D() {
             dampingFactor={0.05}
             minDistance={0.1}
             maxDistance={10}
+            mouseButtons={{
+              LEFT:   THREE.MOUSE.PAN,
+              MIDDLE: THREE.MOUSE.DOLLY,
+              RIGHT:  THREE.MOUSE.ROTATE,
+            }}
           />
 
-          <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
+          <GizmoHelper alignment="top-right" margin={[60, 60]}>
             <GizmoViewport
               axisColors={['#ff4444', '#44ff44', '#4488ff']}
               labelColor="white"
@@ -121,28 +192,5 @@ export function Viewport3D() {
         </Suspense>
       </Canvas>
     </div>
-  )
-}
-
-function WorldOrigin() {
-  return (
-    <group>
-      <mesh position={[0.05, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
-        <meshBasicMaterial color="#ff4444" />
-      </mesh>
-      <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
-        <meshBasicMaterial color="#44ff44" />
-      </mesh>
-      <mesh position={[0, 0, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
-        <meshBasicMaterial color="#4488ff" />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.006, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-    </group>
   )
 }
