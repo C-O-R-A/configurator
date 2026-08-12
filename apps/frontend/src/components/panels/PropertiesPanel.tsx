@@ -3,7 +3,7 @@ import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
 
 export function PropertiesPanel() {
-  const { joints, selectedId, removeJoint, renameJoint, selectJoint } = useRobotStore()
+  const { joints, selectedId, removeJoint, renameJoint, selectJoint, moveJoint, rotateJoint } = useRobotStore()
   const joint = joints.find(j => j.instanceId === selectedId)
 
   if (!joint) {
@@ -73,15 +73,28 @@ export function PropertiesPanel() {
         )}
 
         <Section label="Transform">
-          <Field
+          <EditableField
             label="Position"
             value={joint.position.map(v => v.toFixed(4)).join(', ')}
-            mono
+            onChange={v => {
+              const parts = v.split(',').map(s => parseFloat(s.trim()))
+              if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+                moveJoint(joint.instanceId, parts as [number, number, number])
+              }
+            }}
           />
-          <Field
+          <EditableField
             label="Rotation"
             value={joint.rotation.map(v => (v * 180 / Math.PI).toFixed(1) + '°').join(', ')}
-            mono
+            onChange={v => {
+              const parts = v.split(',').map(s => parseFloat(s.trim()))
+              if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+                rotateJoint(
+                  joint.instanceId,
+                  parts.map(deg => deg * Math.PI / 180) as [number, number, number],
+                )
+              }
+            }}
           />
         </Section>
 

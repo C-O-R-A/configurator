@@ -18,21 +18,21 @@
     "axis": [0, 0, 1]
   },
   "mesh": {
-    "visual": "urdf/meshes/revolute_l_visual.glb",
-    "collision": "urdf/meshes/revolute_l_collision.stl"
+    "visual": "description/meshes/revolute_l_visual.glb",
+    "collision": "description/meshes/revolute_l_collision.stl"
   },
   "urdf": "urdf/revolute_l.xacro",
   "connectors": [
     {
       "name": "joint_out",
-      "origin": [0.0, 0.0, 70.002],
+      "origin": [0.0, 0.0, 88.002],
       "axes": [[0.0,-1.0,0.0],[1.0,0.0,0.0],[0.0,0.0,1.0]],
       "type": "flange_input"
     },
     {
       "name": "joint_in",
-      "origin": [0.0, -88.002, 0.0],
-      "axes": [[0.0,0.0,1.0],[0.0,1.0,0.0],[-1.0,0.0,0.0]],
+      "origin": [0.0, -70.002, 0.0],
+      "axes": [[0.0, 0.0, -1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
       "type": "flange_output"
     }
   ],

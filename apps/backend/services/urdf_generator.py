@@ -4,6 +4,55 @@ Follows REP-103 (Z-up, metres, radians).
 """
 import math
 from models.schemas import ExportRequest, SceneJoint
+from math import sin, cos, copysign
+
+
+def _euler_xyz_to_quat(roll: float, pitch: float, yaw: float) -> tuple[float, float, float, float]:
+    # Convert Euler XYZ (roll, pitch, yaw) to quaternion (x, y, z, w)
+    cy = cos(yaw * 0.5)
+    sy = sin(yaw * 0.5)
+    cp = cos(pitch * 0.5)
+    sp = sin(pitch * 0.5)
+    cr = cos(roll * 0.5)
+    sr = sin(roll * 0.5)
+
+    qw = cr * cp * cy + sr * sp * sy
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+    return qx, qy, qz, qw
+
+
+def _quat_mult(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    x = aw * bx + ax * bw + ay * bz - az * by
+    y = aw * by - ax * bz + ay * bw + az * bx
+    z = aw * bz + ax * by - ay * bx + az * bw
+    w = aw * bw - ax * bx - ay * by - az * bz
+    return x, y, z, w
+
+
+def _quat_to_euler_xyz(x: float, y: float, z: float, w: float) -> tuple[float, float, float]:
+    # Convert quaternion to Euler XYZ (roll, pitch, yaw)
+    # roll (x-axis rotation)
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = math.atan2(sinr_cosp, cosr_cosp)
+
+    # pitch (y-axis rotation)
+    sinp = 2 * (w * y - z * x)
+    if abs(sinp) >= 1:
+        pitch = copysign(math.pi / 2, sinp)
+    else:
+        pitch = math.asin(sinp)
+
+    # yaw (z-axis rotation)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = math.atan2(siny_cosp, cosy_cosp)
+
+    return roll, pitch, yaw
 
 
 def generate_urdf_xacro(req: ExportRequest) -> str:
@@ -53,7 +102,20 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
     pos = j.position
     rot = j.rotation
 
-    child_input = j.input or 'joint_in'
+    child_input = j.input_ or 'joint_in'
+    # The frontend uses Three.js (Y-up). ROS/REP-103 expects Z-up.
+    # Convert positions and rotations from Three.js (Y-up) to ROS (Z-up)
+    # Position transform: (x, y, z)_three -> (x, -z, y)_ros (rotate +90deg about X)
+    pos_ros_x = pos[0]
+    pos_ros_y = -pos[2]
+    pos_ros_z = pos[1]
+
+    # Rotation: compose a +90deg rotation about X before the joint rotation
+    q_three = _euler_xyz_to_quat(rot[0], rot[1], rot[2])
+    # Quaternion for +90deg about X
+    q_rx90 = (math.sin(math.pi / 4), 0.0, 0.0, math.cos(math.pi / 4))
+    q_ros = _quat_mult(q_rx90, q_three)
+    rpy_ros = _quat_to_euler_xyz(*q_ros)
 
     return [
         f'  <xacro:{m.id}',
@@ -62,8 +124,8 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
         f'    input="{child_input}"',
         f'    lower="{m.parameters.limits.min}"',
         f'    upper="{m.parameters.limits.max}">',
-        f'    <origin xyz="{pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}"',
-        f'            rpy="{rot[0]:.6f} {rot[1]:.6f} {rot[2]:.6f}"/>',
+        f'    <origin xyz="{pos_ros_x:.6f} {pos_ros_y:.6f} {pos_ros_z:.6f}"',
+        f'            rpy="{rpy_ros[0]:.6f} {rpy_ros[1]:.6f} {rpy_ros[2]:.6f}"/>',
         f'  </xacro:{m.id}>',
         '',
     ]

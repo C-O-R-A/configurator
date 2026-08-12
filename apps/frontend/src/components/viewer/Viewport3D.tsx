@@ -7,6 +7,8 @@ import { JointInstance } from './JointInstance'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
 
+import { useRef } from 'react'
+
 type TransformMode = 'translate' | 'rotate' | null
 
 function CameraSetup() {
@@ -22,7 +24,7 @@ function CameraSetup() {
 function WorldOrigin() {
   return (
     <group>
-      <mesh position={[0.05, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.002, 0.002, 0.1, 8]} />
         <meshBasicMaterial color="#ff4444" />
       </mesh>
@@ -46,6 +48,7 @@ export function Viewport3D() {
   const { joints, selectedId, selectJoint, gridVisible } = useRobotStore()
   const [transformMode, setTransformMode]     = useState<TransformMode>('translate')
   const [selectedNode, setSelectedNode]       = useState<THREE.Group | null>(null)
+  const jointNodeMap = useRef<Record<string, THREE.Group | null>>({})
   const [moveJoint, rotateJoint]              = useRobotStore(s => [s.moveJoint, s.rotateJoint])
 
   // Clear selected node when selection changes
@@ -54,9 +57,18 @@ export function Viewport3D() {
   }, [selectedId])
 
   const handleNodeReady = useCallback((instanceId: string, node: THREE.Group | null) => {
+    jointNodeMap.current[instanceId] = node
     if (instanceId === selectedId) {
       setSelectedNode(node)
     }
+  }, [selectedId])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedNode(null)
+      return
+    }
+    setSelectedNode(jointNodeMap.current[selectedId] ?? null)
   }, [selectedId])
 
   const handleTransformChange = useCallback(() => {
@@ -160,12 +172,12 @@ export function Viewport3D() {
 
             <WorldOrigin />
 
-            {joints.map(joint => (
+            {joints.filter(joint => !joint.parentInstanceId).map(joint => (
               <JointInstance
                 key={joint.instanceId}
                 joint={joint}
                 isSelected={joint.instanceId === selectedId}
-                onNodeReady={(node) => handleNodeReady(joint.instanceId, node)}
+                onNodeReady={handleNodeReady}
               />
             ))}
           </group>
@@ -177,9 +189,8 @@ export function Viewport3D() {
             minDistance={0.1}
             maxDistance={10}
             mouseButtons={{
-              LEFT:   THREE.MOUSE.PAN,
-              MIDDLE: THREE.MOUSE.DOLLY,
-              RIGHT:  THREE.MOUSE.ROTATE,
+              RIGHT:   THREE.MOUSE.PAN,
+              MIDDLE: THREE.MOUSE.ROTATE,   
             }}
           />
 

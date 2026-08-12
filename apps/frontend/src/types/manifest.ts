@@ -102,7 +102,7 @@ export interface SceneJoint {
   input:            'joint_in' | 'joint_out' | null
   parent_connector: 'joint_in' | 'joint_out' | null
   
-  // World-space transform (meters, radians — ROS REP-103)
+  // Local transform relative to parent or base_link (meters, radians — ROS REP-103)
   position: Vec3
   rotation: Vec3                 // Euler XYZ in radians
   

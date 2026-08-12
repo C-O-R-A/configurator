@@ -125,7 +125,7 @@ class SceneJoint(BaseModel):
     motorConfig:      Optional[MotorConfig]   = None
     gearboxConfig:    Optional[GearboxConfig] = None
     jointName:        str
-    input:            Optional[Literal["joint_in", "joint_out"]] = None
+    input_:           Optional[Literal["joint_in", "joint_out"]] = Field(default=None, alias="input")
     parent_connector: Optional[Literal["joint_in", "joint_out"]] = None
 
 class SceneLink(BaseModel):

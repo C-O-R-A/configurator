@@ -1,0 +1,51 @@
+
+{
+	"id": "revolute_m",
+	"type": "revolute",
+	"displayName": "Revolute Medium",
+	"description": "Medium size revolute joint",
+	"version": "1.0.0",
+	"specs": {
+		"mass": 1.0,
+		"max_torque": 90,
+		"max_speed": 200
+	},
+	"parameters": {
+		"limits": {
+			"min": -3.14159,
+			"max": 3.14159
+		},
+		"reduction_ratio": 150.0,
+		"axis": [0, 0, 1]
+	},
+	"mesh": {
+		"visual": "description/meshes/revolute_m_visual.glb",
+		"collision": "description/meshes/revolute_m_collision.stl"
+	},
+	"urdf": "urdf/revolute_m.xacro",
+	"connectors": [
+		{
+			"name": "joint_out",
+			"origin": [0.0, 0.0, 60.0],
+			"axes": [[0.0,-1.0,0.0],[1.0,0.0,0.0],[0.0,0.0,1.0]],
+			"type": "flange_input"
+		},
+		{
+			"name": "joint_in",
+			"origin": [0.0, -50.0, 0.0],
+			"axes": [[0.0, 0.0, -1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+			"type": "flange_output"
+		}
+	],
+	"cad": {
+		"cad_folder":"Revolute_M"
+	},
+	"motor_interface": {
+		"max_motor_diameter": 50.0,
+		"max_motor_length": 70.0
+	},
+	"gearbox": {
+		"integrated": false,
+		"type": "wolfrom"
+	}
+}

@@ -38,6 +38,25 @@ export function Topbar() {
     }
   }
 
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          robot_name: robotName,
+          joints,
+          links: [],
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      alert('Configuration saved successfully!')
+    } catch (err) {
+      console.error(err)
+      alert('Save failed — is the backend running?')
+    } 
+  }
+
   return (
     <div style={styles.bar}>
       <div style={styles.logo}>

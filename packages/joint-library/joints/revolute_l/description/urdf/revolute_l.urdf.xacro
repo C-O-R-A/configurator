@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:include filename="revolute_l_properties.xacro" />
+  <!-- <xacro:property name="joint_material" value="0.019608 0.32549 1 1" /> -->
 
   <xacro:macro name="revolute_l" params="prefix parent_connection input *origin
       mass='1.6'
@@ -8,14 +8,14 @@
       effort='10' velocity='1' lower='-3.141593' upper='3.141593'">
       
       <!-- Actual joint geometry -->
-      <link name="${prefix}revolute_l">
+      <link name="${prefix}_revolute_l_link">
         <visual>
           <origin xyz="0 0 0" rpy="1.570796 0 0" />
-          <geometry><mesh filename="meshes/revolute_l_visual.glb" /></geometry>
-          <material name="joint_material" />
+          <geometry><mesh filename="file://$(find revolute_l_description)/meshes/revolute_l_visual.glb" /></geometry>
+          <!-- <material name="joint_material" /> -->
         </visual>
         <collision>
-          <geometry><mesh filename="meshes/revolute_l_collision.stl" /></geometry>
+          <geometry><mesh filename="file://$(find revolute_l_description)/meshes/revolute_l_collision.stl" /></geometry>
         </collision>
         <inertial>
           <mass value="${mass}" />
@@ -23,30 +23,28 @@
         </inertial>
       </link>
 
-      <joint name="${prefix}_joint_out_joint" type="revolute">
-        <origin xyz="0 -0.088002 0" rpy="1.570796 -1.570796 0" />
-        <parent link="${prefix}revolute_l" />
+      <joint name="${prefix}" type="revolute">
+        <origin xyz="0 -0.088002 0" rpy="1.570796 1.570796 0.0" />
+        <parent link="${prefix}_revolute_l_link" />
         <child link="${prefix}_joint_out" />
         <axis xyz="0 0 1" />
         <limit effort="${effort}" velocity="${velocity}" lower="${lower}" upper="${upper}" />
       </joint>
       
       <joint name="${prefix}_joint_in_joint" type="fixed">
-        <origin xyz="0 0 -0.070002" rpy="0 0 -1.570796" />
-        <parent link="${prefix}revolute_l" />
-        <child link="${prefix}_joint_in" />
+        <origin xyz="0 0 0.070002" rpy="0 0 -1.570796" />
+        <parent link="${prefix}_joint_in" />
+        <child link="${prefix}_revolute_l_link" />
       </joint>
       
       <!-- Empty links to attach child joints to the input or output of this joint -->
       <link name="${prefix}_joint_in" />
       <link name="${prefix}_joint_out" />
       
-      <!-- Attatch the child link to the input or output of this joint if specified, otherwise dont attatch-->
-      
       <!-- attatch output of parent to input of this joint -->
       <xacro:if value="${input == 'joint_in'}">
         <joint name="${parent_connection}_to_${prefix}_joint" type="fixed">
-          <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+          <xacro:insert_block name="origin" />
           <parent link="${parent_connection}" />
           <child link="${prefix}_joint_in" />
         </joint>
@@ -55,7 +53,7 @@
       <!-- attatch input of parent to output of this joint -->
       <xacro:if value="${input == 'joint_out'}">
         <joint name="${prefix}_to_${parent_connection}_joint" type="fixed">
-          <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+          <xacro:insert_block name="origin" />
           <parent link="${prefix}_joint_out" />
           <child link="${parent_connection}" />
         </joint>

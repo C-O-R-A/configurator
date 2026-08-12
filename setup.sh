@@ -11,7 +11,9 @@ cd apps/frontend
 npm install
 npm run build
 cd ../..
-echo "Setup complete. Run: python run.py"
+echo "Setup complete"
+
+apt install -y docker.io docker-compose
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cat > CORA.desktop << EOF

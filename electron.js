@@ -5,6 +5,11 @@ const path = require('path')
 let mainWindow
 let backendProcess
 
+// If the host has no discrete GPU or problematic GPU drivers,
+// disabling hardware acceleration prevents Chromium GPU errors
+// shown by packaged shortcuts on some systems.
+app.disableHardwareAcceleration()
+
 function startBackend() {
   const venvPython = path.join(__dirname, '.venv', 'bin', 'python3')
   backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--port', '8000'], {
@@ -21,11 +26,12 @@ function createWindow() {
     height: 900,
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { contextIsolation: true },
-    titleBarStyle: 'hiddenInset',   // cleaner look
     title: 'CORA Configurator',
+    frame: true,
+    autoHideMenuBar: false,
   })
 
-  mainWindow.setMenuBarVisibility(false)  // no default File/Edit menu bar
+  mainWindow.setMenuBarVisibility(true)
 
   // Wait for backend to be ready before loading
   const tryLoad = (attempts = 0) => {

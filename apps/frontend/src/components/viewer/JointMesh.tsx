@@ -3,15 +3,20 @@ import * as THREE from 'three'
 import type { JointManifest } from '../../types/manifest'
 import { COLORS } from '../../theme'
 import { useMemo } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
 
 interface JointMeshProps {
   manifest: JointManifest
   selected: boolean
   hovered: boolean
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
+  onPointerOver?: (e: ThreeEvent<PointerEvent>) => void
+  onPointerOut?: (e: ThreeEvent<PointerEvent>) => void
 }
 
-export function JointMesh({ manifest, selected, hovered }: JointMeshProps) {
+export function JointMesh({ manifest, selected, hovered, onClick, onPointerOver, onPointerOut }: JointMeshProps) {
   const meshUrl = `/joint-library/joints/${manifest.id}/${manifest.mesh.visual}`
+  console.debug('Loading joint mesh', manifest.id, meshUrl)
   const { scene } = useGLTF(meshUrl)
 
   const cloned = useMemo(() => {
@@ -35,6 +40,13 @@ export function JointMesh({ manifest, selected, hovered }: JointMeshProps) {
     }
   })
 
-  return <primitive object={cloned} />
+  return (
+    <primitive
+      object={cloned}
+      onClick={onClick}
+      onPointerOver={onPointerOver}
+      onPointerOut={onPointerOut}
+    />
+  )
 }
 

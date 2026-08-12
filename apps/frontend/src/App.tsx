@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { Topbar } from './components/ui/Topbar'
 import { JointLibraryPanel } from './components/panels/JointLibraryPanel'
 import { PropertiesPanel } from './components/panels/PropertiesPanel'
@@ -7,6 +8,28 @@ import { useRobotStore } from './store/robotStore'
 
 export default function App() {
   const [backendError, setBackendError] = useState<string | null>(null)
+  const undo = useRobotStore(s => s.undo)
+  const redo = useRobotStore(s => s.redo)
+
+  const handleKey = useCallback((e: KeyboardEvent) => {
+    const mod = e.ctrlKey || e.metaKey
+    if (!mod) return
+    if (e.key === 'z' || e.key === 'Z') {
+      if (e.shiftKey) {
+        redo()
+      } else {
+        undo()
+      }
+      e.preventDefault()
+    } else if (e.key === 'y' || e.key === 'Y') {
+      redo(); e.preventDefault()
+    }
+  }, [undo, redo])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [handleKey])
 
   useEffect(() => {
     fetch('/api/joints')
