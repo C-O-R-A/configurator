@@ -1,6 +1,48 @@
 import { useState } from 'react'
+import * as THREE from 'three'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
+
+type JointEntry = ReturnType<typeof useRobotStore.getState>['joints'][number]
+
+function getChildConn(joint: JointEntry) {
+  if (!joint.parentInstanceId || !joint.input) return null
+  return joint.manifest.connectors.find(c => c.name === joint.input)
+    ?? joint.manifest.connectors[0]
+    ?? null
+}
+
+function makeRotMat(axes: readonly [
+  readonly [number, number, number],
+  readonly [number, number, number],
+  readonly [number, number, number],
+]): THREE.Matrix4 {
+  return new THREE.Matrix4().set(
+    axes[0][0], axes[1][0], axes[2][0], 0,
+    axes[0][1], axes[1][1], axes[2][1], 0,
+    axes[0][2], axes[1][2], axes[2][2], 0,
+    0,          0,          0,          1,
+  )
+}
+
+function bakedQuat(joint: JointEntry): THREE.Quaternion {
+  const childConn = getChildConn(joint)
+  if (!childConn) return new THREE.Quaternion()
+  return new THREE.Quaternion()
+    .setFromRotationMatrix(makeRotMat(childConn.axes))
+    .invert()
+}
+
+function bakedPositionOffset(joint: JointEntry): THREE.Vector3 {
+  const childConn = getChildConn(joint)
+  if (!childConn) return new THREE.Vector3()
+  const q = bakedQuat(joint)
+  return new THREE.Vector3(
+    childConn.origin[0] / 1000,
+    childConn.origin[1] / 1000,
+    childConn.origin[2] / 1000,
+  ).applyQuaternion(q).negate()
+}
 
 export function PropertiesPanel() {
   const { joints, selectedId, removeJoint, renameJoint, selectJoint, moveJoint, rotateJoint } = useRobotStore()
@@ -19,6 +61,52 @@ export function PropertiesPanel() {
 
   const { manifest } = joint
 
+  // ── Display values ────────────────────────────────────────────────────────
+
+  const posOffset = bakedPositionOffset(joint)
+  const displayPosition: [number, number, number] = [
+    joint.position[0] - posOffset.x,
+    joint.position[1] - posOffset.y,
+    joint.position[2] - posOffset.z,
+  ]
+
+  const bq          = bakedQuat(joint)
+  const storedQuat  = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(joint.rotation[0], joint.rotation[1], joint.rotation[2], 'XYZ')
+  )
+  const displayQuat  = bq.clone().invert().multiply(storedQuat)
+  const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
+  const displayRotation: [number, number, number] = [
+    displayEuler.x, displayEuler.y, displayEuler.z,
+  ]
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handlePosChange = (axis: 0 | 1 | 2, raw: string) => {
+    const v = parseFloat(raw)
+    if (isNaN(v)) return
+    const next: [number, number, number] = [...displayPosition] as [number, number, number]
+    next[axis] = v
+    moveJoint(joint.instanceId, [
+      next[0] + posOffset.x,
+      next[1] + posOffset.y,
+      next[2] + posOffset.z,
+    ])
+  }
+
+  const handleRotChange = (axis: 0 | 1 | 2, raw: string) => {
+    const deg = parseFloat(raw)
+    if (isNaN(deg)) return
+    const next: [number, number, number] = [...displayRotation] as [number, number, number]
+    next[axis] = deg * Math.PI / 180
+    const inputQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(next[0], next[1], next[2], 'XYZ')
+    )
+    const stored  = bq.clone().multiply(inputQuat)
+    const e       = new THREE.Euler().setFromQuaternion(stored, 'XYZ')
+    rotateJoint(joint.instanceId, [e.x, e.y, e.z])
+  }
+
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
@@ -34,10 +122,10 @@ export function PropertiesPanel() {
 
       <div style={styles.body}>
         <Section label="Joint">
-          <Field label="Type" value={manifest.type} mono />
-          <Field label="Model" value={manifest.displayName} />
+          <Field label="Type"  value={manifest.type}        mono />
+          <Field label="Model" value={manifest.displayName}      />
           <EditableField
-            label="Joint name"
+            label="Name"
             value={joint.jointName}
             onChange={v => renameJoint(joint.instanceId, v)}
           />
@@ -49,17 +137,17 @@ export function PropertiesPanel() {
 
         <Section label="Performance">
           {manifest.specs.max_torque && (
-            <Field label="Max torque" value={`${manifest.specs.max_torque} Nm`} mono />
+            <Field label="Max torque" value={`${manifest.specs.max_torque} Nm`}  mono />
           )}
           {manifest.specs.max_speed && (
-            <Field label="Max speed" value={`${manifest.specs.max_speed} RPM`} mono />
+            <Field label="Max speed"  value={`${manifest.specs.max_speed} RPM`} mono />
           )}
         </Section>
 
         <Section label="Motor Interface">
-          <Field label="Type" value={manifest.motor_interface.type} mono />
+          <Field label="Type"        value={manifest.motor_interface.type} mono />
           <Field label="Bolt circle" value={`⌀${manifest.motor_interface.flange_bolt_circle} mm`} mono />
-          <Field label="Bolts" value={`${manifest.motor_interface.bolt_count}× ${manifest.motor_interface.bolt_size}`} mono />
+          <Field label="Bolts"       value={`${manifest.motor_interface.bolt_count}× ${manifest.motor_interface.bolt_size}`} mono />
           <Field label="Max motor ⌀" value={`${manifest.motor_interface.max_motor_diameter} mm`} mono />
         </Section>
 
@@ -72,29 +160,21 @@ export function PropertiesPanel() {
           </Section>
         )}
 
-        <Section label="Transform">
-          <EditableField
-            label="Position"
-            value={joint.position.map(v => v.toFixed(4)).join(', ')}
-            onChange={v => {
-              const parts = v.split(',').map(s => parseFloat(s.trim()))
-              if (parts.length === 3 && parts.every(n => !isNaN(n))) {
-                moveJoint(joint.instanceId, parts as [number, number, number])
-              }
-            }}
+        <Section label="Position (m)">
+          <XYZFields
+            values={displayPosition}
+            labels={['X', 'Y', 'Z']}
+            onChange={handlePosChange}
+            decimals={4}
           />
-          <EditableField
-            label="Rotation"
-            value={joint.rotation.map(v => (v * 180 / Math.PI).toFixed(1) + '°').join(', ')}
-            onChange={v => {
-              const parts = v.split(',').map(s => parseFloat(s.trim()))
-              if (parts.length === 3 && parts.every(n => !isNaN(n))) {
-                rotateJoint(
-                  joint.instanceId,
-                  parts.map(deg => deg * Math.PI / 180) as [number, number, number],
-                )
-              }
-            }}
+        </Section>
+
+        <Section label="Rotation (°)">
+          <XYZFields
+            values={displayRotation.map(v => v * 180 / Math.PI) as [number, number, number]}
+            labels={['R', 'P', 'Y']}
+            onChange={handleRotChange}
+            decimals={1}
           />
         </Section>
 
@@ -107,6 +187,8 @@ export function PropertiesPanel() {
                 : 'base_link (root)'
             }
           />
+          <Field label="Input"  value={joint.input            ?? '—'} mono />
+          <Field label="Output" value={joint.parent_connector ?? '—'} mono />
           <Field
             label="Children"
             value={
@@ -122,6 +204,78 @@ export function PropertiesPanel() {
     </div>
   )
 }
+
+// ── XYZ / RPY row of three separate inputs ───────────────────────────────────
+
+function XYZFields({
+  values,
+  labels,
+  onChange,
+  decimals,
+}: {
+  values:   [number, number, number]
+  labels:   [string, string, string]
+  onChange: (axis: 0 | 1 | 2, raw: string) => void
+  decimals: number
+}) {
+  return (
+    <div style={styles.xyzRow}>
+      {([0, 1, 2] as const).map(i => (
+        <XYZInput
+          key={i}
+          label={labels[i]}
+          value={values[i]}
+          decimals={decimals}
+          onChange={raw => onChange(i, raw)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function XYZInput({
+  label,
+  value,
+  decimals,
+  onChange,
+}: {
+  label:    string
+  value:    number
+  decimals: number
+  onChange: (raw: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft]     = useState('')
+  const display               = value.toFixed(decimals)
+
+  return (
+    <div style={styles.xyzCell}>
+      <span style={styles.xyzLabel}>{label}</span>
+      {editing ? (
+        <input
+          style={styles.xyzInput}
+          value={draft}
+          autoFocus
+          onChange={e => setDraft(e.target.value)}
+          onBlur={() => { onChange(draft); setEditing(false) }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { onChange(draft); setEditing(false) }
+            if (e.key === 'Escape') { setEditing(false) }
+          }}
+        />
+      ) : (
+        <span
+          style={styles.xyzValue}
+          onClick={() => { setDraft(display); setEditing(true) }}
+        >
+          {display}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ── Supporting components ────────────────────────────────────────────────────
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -147,7 +301,7 @@ function EditableField({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void
 }) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
+  const [draft, setDraft]     = useState(value)
 
   return (
     <div style={styles.field}>
@@ -172,6 +326,8 @@ function EditableField({ label, value, onChange }: {
     </div>
   )
 }
+
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
@@ -208,19 +364,13 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 11,
   },
-  body: { flex: 1, overflowY: 'auto', padding: '4px 0' },
+  body:  { flex: 1, overflowY: 'auto', padding: '4px 0' },
   empty: {
     color: COLORS.textDim,
     fontSize: 12,
     textAlign: 'center',
     padding: 24,
     fontFamily: 'IBM Plex Mono, monospace',
-  },
-  unassigned: {
-    color: COLORS.textDim,
-    fontSize: 11,
-    fontFamily: 'IBM Plex Mono, monospace',
-    padding: '2px 0',
   },
   section: {
     padding: '8px 14px',
@@ -245,15 +395,56 @@ const styles: Record<string, React.CSSProperties> = {
   fieldLabel: { fontSize: 11, color: '#6a7a90', flexShrink: 0 },
   fieldValue: { fontSize: 11, color: '#b0c4d8', textAlign: 'right', wordBreak: 'break-all' },
   inlineInput: {
+    background:   COLORS.accentGlow,
+    border:       `1px solid ${COLORS.accentBorder}`,
+    borderRadius: 4,
+    color:        COLORS.accent,
+    fontSize:     11,
+    padding:      '2px 6px',
+    fontFamily:   'IBM Plex Mono, monospace',
+    outline:      'none',
+    width:        110,
+    textAlign:    'right',
+  },
+  xyzRow: {
+    display: 'flex',
+    gap: 4,
+    paddingTop: 2,
+  },
+  xyzCell: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
+  xyzLabel: {
+    fontSize: 9,
+    color: COLORS.textDim,
+    fontFamily: 'IBM Plex Mono, monospace',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+  xyzValue: {
+    fontSize: 10,
+    color: '#b0c4d8',
+    fontFamily: 'IBM Plex Mono, monospace',
+    cursor: 'text',
+    padding: '2px 4px',
+    borderRadius: 3,
+    border: '1px solid transparent',
+    textAlign: 'right' as const,
+  },
+  xyzInput: {
+    width: '100%',
     background: COLORS.accentGlow,
     border: `1px solid ${COLORS.accentBorder}`,
-    borderRadius: 4,
+    borderRadius: 3,
     color: COLORS.accent,
-    fontSize: 11,
-    padding: '2px 6px',
+    fontSize: 10,
+    padding: '2px 4px',
     fontFamily: 'IBM Plex Mono, monospace',
     outline: 'none',
-    width: 110,
-    textAlign: 'right',
+    textAlign: 'right' as const,
+    boxSizing: 'border-box' as const,
   },
 }

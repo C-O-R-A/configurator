@@ -1,143 +1,66 @@
+// robotStore.ts
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type { SceneJoint, JointManifest } from '../types/manifest'
 import * as THREE from 'three'
 
-/**
- * Returns the world transform of the JOINT ATTACHMENT FRAME.
- *
- * IMPORTANT:
- * joint.position is the offset from the parent's selected connector.
- * It is NOT the position of the joint's physical/model origin.
- *
- * Therefore:
- *
- *   parent connector
- *        +
- *   joint.position
- *        =
- *   child input connector
- *
- * The child model is rendered relative to its input connector in
- * JointInstance.tsx.
- */
-function computeJointWorldTransform(
-  joint: SceneJoint,
-  joints: SceneJoint[],
-): {
-  position: THREE.Vector3
-  quaternion: THREE.Quaternion
-} {
-  const localPosition = new THREE.Vector3(...joint.position)
-
-  const localQuaternion = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(
-      joint.rotation[0],
-      joint.rotation[1],
-      joint.rotation[2],
-      'XYZ',
-    ),
+function makeRotMat(axes: readonly [
+  readonly [number, number, number],
+  readonly [number, number, number],
+  readonly [number, number, number],
+]): THREE.Matrix4 {
+  return new THREE.Matrix4().set(
+    axes[0][0], axes[1][0], axes[2][0], 0,
+    axes[0][1], axes[1][1], axes[2][1], 0,
+    axes[0][2], axes[1][2], axes[2][2], 0,
+    0,          0,          0,          1,
   )
+}
 
-  if (!joint.parentInstanceId) {
-    return {
-      position: localPosition,
-      quaternion: localQuaternion,
-    }
-  }
-
-  const parent = joints.find(
-    j => j.instanceId === joint.parentInstanceId,
-  )
-
-  if (!parent) {
-    return {
-      position: localPosition,
-      quaternion: localQuaternion,
-    }
-  }
-
-  const parentWorld = computeJointWorldTransform(parent, joints)
-
-  /**
-   * The child attachment frame is positioned relative to the parent
-   * attachment frame.
-   *
-   * DO NOT add the child's input connector origin here.
-   *
-   * The input connector is the local origin of the rendered child
-   * assembly, so adding connector_local here double-counts the offset.
-   */
-  const worldPosition = localPosition
-    .clone()
-    .applyQuaternion(parentWorld.quaternion)
-    .add(parentWorld.position)
-
-  const worldQuaternion = parentWorld.quaternion
-    .clone()
-    .multiply(localQuaternion)
-
+function snapshot(state: { joints: SceneJoint[]; selectedId: string | null }) {
   return {
-    position: worldPosition,
-    quaternion: worldQuaternion,
+    joints:     JSON.parse(JSON.stringify(state.joints)),
+    selectedId: state.selectedId,
   }
 }
 
 interface RobotStore {
-  library: JointManifest[]
+  library:        JointManifest[]
   libraryLoading: boolean
-  loadLibrary: () => Promise<void>
+  loadLibrary:    () => Promise<void>
 
-  joints: SceneJoint[]
+  joints:     SceneJoint[]
   selectedId: string | null
 
+  past:   { joints: SceneJoint[]; selectedId: string | null }[]
+  future: { joints: SceneJoint[]; selectedId: string | null }[]
+  undo:   () => void
+  redo:   () => void
+
   addJoint: (
-    manifest: JointManifest,
-    parentId?: string,
-    childConnector?: 'joint_in' | 'joint_out' | null,
+    manifest:         JointManifest,
+    parentId?:        string,
+    childConnector?:  'joint_in' | 'joint_out' | null,
     parentConnector?: 'joint_in' | 'joint_out' | null,
   ) => void
-
-  removeJoint: (instanceId: string) => void
-  selectJoint: (instanceId: string | null) => void
-  renameJoint: (instanceId: string, newName: string) => void
-  moveJoint: (
-    instanceId: string,
-    position: [number, number, number],
-  ) => void
-  rotateJoint: (
-    instanceId: string,
-    rotation: [number, number, number],
-  ) => void
-
+  removeJoint:  (instanceId: string) => void
+  selectJoint:  (instanceId: string | null) => void
+  renameJoint:  (instanceId: string, newName: string) => void
+  moveJoint:    (instanceId: string, position: [number, number, number]) => void
+  rotateJoint:  (instanceId: string, rotation: [number, number, number]) => void
   connectJoint: (
-    childId: string,
-    parentId: string | null,
-    childConnector: 'joint_in' | 'joint_out',
+    childId:         string,
+    parentId:        string | null,
+    childConnector:  'joint_in' | 'joint_out',
     parentConnector: 'joint_in' | 'joint_out',
   ) => void
-
   clearScene: () => void
 
-  past: {
-    joints: SceneJoint[]
-    selectedId: string | null
-  }[]
-
-  future: {
-    joints: SceneJoint[]
-    selectedId: string | null
-  }[]
-
-  undo: () => void
-  redo: () => void
-
-  robotName: string
+  robotName:    string
   setRobotName: (name: string) => void
-
-  gridVisible: boolean
-  toggleGrid: () => void
+  gridVisible:  boolean
+  toggleGrid:   () => void
 }
 
 let linkCounter = 0
@@ -145,397 +68,192 @@ let linkCounter = 0
 export const useRobotStore = create<RobotStore>()(
   devtools(
     (set, get) => ({
-      library: [],
+      library:        [],
       libraryLoading: false,
+      joints:         [],
+      selectedId:     null,
+      past:           [],
+      future:         [],
+      robotName:      'my_robot',
+      gridVisible:    true,
 
-      joints: [],
-      past: [],
-      future: [],
-      selectedId: null,
+      undo: () => set(state => {
+        if (state.past.length === 0) return state
+        const prev    = state.past[state.past.length - 1]
+        const newPast = state.past.slice(0, -1)
+        return {
+          joints:     prev.joints,
+          selectedId: prev.selectedId,
+          past:       newPast,
+          future:     [snapshot(state), ...state.future],
+        }
+      }),
 
-      robotName: 'my_robot',
-      gridVisible: true,
-
-      undo: () => {
-        set(state => {
-          if (state.past.length === 0) return state
-
-          const prev = state.past[state.past.length - 1]
-          const newPast = state.past.slice(0, -1)
-
-          const snapshot = {
-            joints: JSON.parse(JSON.stringify(state.joints)),
-            selectedId: state.selectedId,
-          }
-
-          return {
-            joints: prev.joints,
-            selectedId: prev.selectedId,
-            past: newPast,
-            future: [snapshot, ...state.future],
-          }
-        })
-      },
-
-      redo: () => {
-        set(state => {
-          if (state.future.length === 0) return state
-
-          const next = state.future[0]
-          const newFuture = state.future.slice(1)
-
-          const snapshot = {
-            joints: JSON.parse(JSON.stringify(state.joints)),
-            selectedId: state.selectedId,
-          }
-
-          return {
-            joints: next.joints,
-            selectedId: next.selectedId,
-            past: [...state.past, snapshot],
-            future: newFuture,
-          }
-        })
-      },
+      redo: () => set(state => {
+        if (state.future.length === 0) return state
+        const next      = state.future[0]
+        const newFuture = state.future.slice(1)
+        return {
+          joints:     next.joints,
+          selectedId: next.selectedId,
+          past:       [...state.past, snapshot(state)],
+          future:     newFuture,
+        }
+      }),
 
       loadLibrary: async () => {
         set({ libraryLoading: true })
-
         try {
-          const res = await fetch('/api/joints')
+          const res  = await fetch('/api/joints')
           const data = await res.json()
-
-          set({
-            library: data,
-            libraryLoading: false,
-          })
+          set({ library: data, libraryLoading: false })
         } catch (err) {
           console.error('Failed to load joint library:', err)
-
-          set({
-            libraryLoading: false,
-          })
+          set({ libraryLoading: false })
         }
       },
 
-      addJoint: (
-        manifest,
-        parentId,
-        childConnector,
-        parentConnector,
-      ) => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(JSON.stringify(state.joints)),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
+      addJoint: (manifest, parentId, childConnector, parentConnector) => {
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
 
-        const n = ++linkCounter
+        const n          = ++linkCounter
         const instanceId = uuid()
-
-        const parent = parentId
-          ? get().joints.find(
-              j => j.instanceId === parentId,
-            )
+        const parent     = parentId
+          ? get().joints.find(j => j.instanceId === parentId)
           : null
 
-        const defaultPosition: [number, number, number] = [0, 0, 0]
-
+        let defaultPosition: [number, number, number] = [0, 0, 0]
         let defaultRotation: [number, number, number] = [0, 0, 0]
 
-        if (
-          parent &&
-          parentConnector &&
-          childConnector
-        ) {
-          const parentConn =
-            parent.manifest.connectors.find(
-              c => c.name === parentConnector,
-            )
-
-          const childConn =
-            manifest.connectors.find(
-              c => c.name === childConnector,
-            )
+        if (parent && parentConnector && childConnector) {
+          const parentConn = parent.manifest.connectors.find(c => c.name === parentConnector)
+          const childConn  = manifest.connectors.find(c => c.name === childConnector)
 
           if (parentConn && childConn) {
-            const parentConnQuat =
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().makeBasis(
-                  new THREE.Vector3(...parentConn.axes[0]),
-                  new THREE.Vector3(...parentConn.axes[1]),
-                  new THREE.Vector3(...parentConn.axes[2]),
-                ),
-              )
+            // ── Rotation ────────────────────────────────────────────────────
+            // The child group sits inside a parent connector group that already
+            // applies parentConnQuat. We need the child's input connector to
+            // align with the parent connector frame (i.e. face "into" it).
+            //
+            // In the parent connector frame:
+            //   child.rotQuat * childConnQuat = identity
+            //   => child.rotQuat = inv(childConnQuat)
+            const childConnQuat = new THREE.Quaternion()
+              .setFromRotationMatrix(makeRotMat(childConn.axes))
 
-            const childConnQuat =
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().makeBasis(
-                  new THREE.Vector3(...childConn.axes[0]),
-                  new THREE.Vector3(...childConn.axes[1]),
-                  new THREE.Vector3(...childConn.axes[2]),
-                ),
-              )
+            const localQuat  = childConnQuat.clone().invert()
+            const childEuler = new THREE.Euler().setFromQuaternion(localQuat, 'XYZ')
 
-            const localQuaternion = parentConnQuat
-              .clone()
-              .multiply(childConnQuat.clone().invert())
+            defaultRotation = [childEuler.x, childEuler.y, childEuler.z]
 
-            const childEuler =
-              new THREE.Euler().setFromQuaternion(
-                localQuaternion,
-                'XYZ',
-              )
+            // ── Position ────────────────────────────────────────────────────
+            // After applying localQuat, the child's input connector is at
+            // localQuat * childConn.origin in the parent connector frame.
+            // We need that point to be at [0,0,0], so:
+            //   child.position = -(localQuat * childConn.origin)
+            const childConnLocalPos = new THREE.Vector3(
+              childConn.origin[0] / 1000,
+              childConn.origin[1] / 1000,
+              childConn.origin[2] / 1000,
+            )
+            const rotatedOffset = childConnLocalPos.clone().applyQuaternion(localQuat)
 
-            defaultRotation = [
-              childEuler.x,
-              childEuler.y,
-              childEuler.z,
+            defaultPosition = [
+              -rotatedOffset.x,
+              -rotatedOffset.y,
+              -rotatedOffset.z,
             ]
           }
         }
 
         const newJoint: SceneJoint = {
           instanceId,
-          manifestId: manifest.id,
+          manifestId:       manifest.id,
           manifest,
-
-          // This is now an offset FROM THE PARENT CONNECTOR,
-          // not an offset from the child's physical origin.
-          position: defaultPosition,
-
-          rotation: defaultRotation,
-
+          position:         defaultPosition,
+          rotation:         defaultRotation,
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
-
-          jointName: `J${n}`,
-
-          input: childConnector ?? null,
+          jointName:        `J${n}`,
+          input:            childConnector  ?? null,
           parent_connector: parentConnector ?? null,
         }
 
         set(state => {
-          const updatedJoints =
-            state.joints.map(j =>
-              j.instanceId === parentId
-                ? {
-                    ...j,
-                    childInstanceIds: [
-                      ...j.childInstanceIds,
-                      instanceId,
-                    ],
-                  }
-                : j,
-            )
-
-          return {
-            joints: [...updatedJoints, newJoint],
-            selectedId: instanceId,
-          }
+          const updatedJoints = state.joints.map(j =>
+            j.instanceId === parentId
+              ? { ...j, childInstanceIds: [...j.childInstanceIds, instanceId] }
+              : j
+          )
+          return { joints: [...updatedJoints, newJoint], selectedId: instanceId }
         })
       },
 
-      removeJoint: instanceId => {
+      removeJoint: (instanceId) => {
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
+          joints: state.joints
+            .filter(j => j.instanceId !== instanceId)
+            .map(j => ({
+              ...j,
+              parentInstanceId: j.parentInstanceId === instanceId ? null : j.parentInstanceId,
+              childInstanceIds: j.childInstanceIds.filter(id => id !== instanceId),
+            })),
+          selectedId: state.selectedId === instanceId ? null : state.selectedId,
         }))
-
-        set(state => {
-          const joint = state.joints.find(
-            j => j.instanceId === instanceId,
-          )
-
-          return {
-            joints: state.joints
-              .filter(j => j.instanceId !== instanceId)
-              .map(j => ({
-                ...j,
-
-                parentInstanceId:
-                  j.parentInstanceId === instanceId
-                    ? null
-                    : j.parentInstanceId,
-
-                childInstanceIds:
-                  j.childInstanceIds.filter(
-                    id => id !== instanceId,
-                  ),
-              })),
-
-            selectedId:
-              state.selectedId === instanceId
-                ? null
-                : state.selectedId,
-          }
-        })
       },
 
       renameJoint: (instanceId, newName) => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
-
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
           joints: state.joints.map(j =>
-            j.instanceId === instanceId
-              ? { ...j, jointName: newName }
-              : j,
+            j.instanceId === instanceId ? { ...j, jointName: newName } : j
           ),
         }))
       },
 
-      selectJoint: instanceId =>
-        set({ selectedId: instanceId }),
+      selectJoint: (instanceId) => set({ selectedId: instanceId }),
 
       moveJoint: (instanceId, position) => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
-
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
           joints: state.joints.map(j =>
-            j.instanceId === instanceId
-              ? { ...j, position }
-              : j,
+            j.instanceId === instanceId ? { ...j, position } : j
           ),
         }))
       },
 
       rotateJoint: (instanceId, rotation) => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
-
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
           joints: state.joints.map(j =>
-            j.instanceId === instanceId
-              ? { ...j, rotation }
-              : j,
+            j.instanceId === instanceId ? { ...j, rotation } : j
           ),
         }))
       },
 
-      connectJoint: (
-        childId,
-        parentId,
-        childConnector,
-        parentConnector,
-      ) => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
-
+      connectJoint: (childId, parentId, childConnector, parentConnector) => {
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
           joints: state.joints.map(j => {
-            if (j.instanceId === childId) {
-              return {
-                ...j,
-                parentInstanceId: parentId,
-                input: childConnector,
-                parent_connector: parentConnector,
-              }
-            }
-
-            if (j.instanceId === parentId) {
-              return {
-                ...j,
-                childInstanceIds: [
-                  ...j.childInstanceIds,
-                  childId,
-                ],
-              }
-            }
-
+            if (j.instanceId === childId)
+              return { ...j, parentInstanceId: parentId, input: childConnector, parent_connector: parentConnector }
+            if (parentId && j.instanceId === parentId)
+              return { ...j, childInstanceIds: [...j.childInstanceIds, childId] }
             return j
           }),
         }))
       },
 
       clearScene: () => {
-        set(state => ({
-          past: [
-            ...state.past,
-            {
-              joints: JSON.parse(
-                JSON.stringify(state.joints),
-              ),
-              selectedId: state.selectedId,
-            },
-          ],
-          future: [],
-        }))
-
+        set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         linkCounter = 0
-
-        set({
-          joints: [],
-          selectedId: null,
-        })
+        set({ joints: [], selectedId: null })
       },
 
-      setRobotName: robotName =>
-        set({ robotName }),
-
-      toggleGrid: () =>
-        set(state => ({
-          gridVisible: !state.gridVisible,
-        })),
+      setRobotName: (robotName) => set({ robotName }),
+      toggleGrid:   () => set(state => ({ gridVisible: !state.gridVisible })),
     }),
-
-    {
-      name: 'cobot-store',
-    },
-  ),
+    { name: 'cobot-store' }
+  )
 )
-

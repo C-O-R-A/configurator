@@ -1,3 +1,4 @@
+// JointInstance.tsx
 import { useState, useCallback, useMemo } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -5,52 +6,6 @@ import { JointMesh } from './JointMesh'
 import { useRobotStore } from '../../store/robotStore'
 import type { SceneJoint } from '../../types/manifest'
 import { COLORS } from '../../theme'
-
-function computeWorldTransform(joint: SceneJoint, joints: SceneJoint[]): { position: THREE.Vector3; quaternion: THREE.Quaternion } {
-  const localPosition = new THREE.Vector3(...joint.position)
-  const localQuaternion = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(joint.rotation[0], joint.rotation[1], joint.rotation[2], 'XYZ')
-  )
-
-  if (!joint.parentInstanceId) {
-    return { position: localPosition, quaternion: localQuaternion }
-  }
-
-  const parent = joints.find(j => j.instanceId === joint.parentInstanceId)
-  if (!parent) {
-    return { position: localPosition, quaternion: localQuaternion }
-  }
-
-  const parentWorld = computeWorldTransform(parent, joints)
-
-  const childConnector = joint.manifest.connectors.find(c => c.name === joint.input) || joint.manifest.connectors[0]
-
-  const childInputLocalPosition = childConnector
-    ? new THREE.Vector3(
-        childConnector.origin[0] / 1000,
-        childConnector.origin[1] / 1000,
-        childConnector.origin[2] / 1000,
-      )
-    : new THREE.Vector3()
-
-  const childInputLocalQuaternion = childConnector
-    ? new THREE.Quaternion().setFromRotationMatrix(
-        new THREE.Matrix4().makeBasis(
-          new THREE.Vector3(...childConnector.axes[0]),
-          new THREE.Vector3(...childConnector.axes[1]),
-          new THREE.Vector3(...childConnector.axes[2]),
-        )
-      )
-    : new THREE.Quaternion()
-
-  const localPositionAdjusted = localPosition.clone().sub(childInputLocalPosition)
-  const localQuaternionAdjusted = localQuaternion.clone().multiply(childInputLocalQuaternion.clone().invert())
-
-  return {
-    position: localPositionAdjusted.clone().applyQuaternion(parentWorld.quaternion).add(parentWorld.position),
-    quaternion: parentWorld.quaternion.clone().multiply(localQuaternionAdjusted),
-  }
-}
 
 interface JointInstanceProps {
   joint:       SceneJoint
@@ -64,7 +19,6 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    console.debug('JointInstance clicked', joint.instanceId)
     selectJoint(joint.instanceId)
   }, [joint.instanceId, selectJoint])
 
@@ -74,8 +28,7 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
     document.body.style.cursor = 'pointer'
   }, [])
 
-  const handlePointerOut = useCallback((e?: ThreeEvent<PointerEvent>) => {
-    if (e) e.stopPropagation()
+  const handlePointerOut = useCallback(() => {
     setHovered(false)
     document.body.style.cursor = 'auto'
   }, [])
@@ -100,14 +53,50 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
 
         <ConnectorAxes joint={joint} />
 
-        {childJoints.map(child => (
-          <JointInstance
-            key={child.instanceId}
-            joint={child}
-            isSelected={child.instanceId === selectedId}
-            onNodeReady={onNodeReady}
-          />
-        ))}
+        {childJoints.map(child => {
+          // Find the connector on this joint the child attaches to
+          const parentConn = joint.manifest.connectors.find(
+            c => c.name === child.parent_connector
+          ) ?? joint.manifest.connectors.find(
+            c => c.type === 'flange_output'
+          ) ?? joint.manifest.connectors[0]
+
+          const connOrigin: [number, number, number] = parentConn
+            ? [
+                parentConn.origin[0] / 1000,
+                parentConn.origin[1] / 1000,
+                parentConn.origin[2] / 1000,
+              ]
+            : [0, 0, 0]
+
+          const connQuat = parentConn
+            ? new THREE.Quaternion().setFromRotationMatrix(
+                new THREE.Matrix4().set(
+                  parentConn.axes[0][0], parentConn.axes[1][0], parentConn.axes[2][0], 0,
+                  parentConn.axes[0][1], parentConn.axes[1][1], parentConn.axes[2][1], 0,
+                  parentConn.axes[0][2], parentConn.axes[1][2], parentConn.axes[2][2], 0,
+                  0, 0, 0, 1,
+                )
+              )
+            : new THREE.Quaternion()
+
+          return (
+            // Single group at the parent connector — no inner offset group.
+            // The child's stored position/rotation already encodes the
+            // corrective offset so its input connector sits here.
+            <group
+              key={child.instanceId}
+              position={connOrigin}
+              quaternion={connQuat}
+            >
+              <JointInstance
+                joint={child}
+                isSelected={child.instanceId === selectedId}
+                onNodeReady={onNodeReady}
+              />
+            </group>
+          )
+        })}
       </group>
 
       {joint.parentInstanceId && <ConnectionLine joint={joint} />}
@@ -125,12 +114,13 @@ function ConnectorAxes({ joint }: { joint: SceneJoint }) {
           connector.origin[2] / 1000,
         )
 
-        const basis = new THREE.Matrix4().makeBasis(
-          new THREE.Vector3(...connector.axes[0]),
-          new THREE.Vector3(...connector.axes[1]),
-          new THREE.Vector3(...connector.axes[2]),
+        const mat = new THREE.Matrix4().set(
+          connector.axes[0][0], connector.axes[1][0], connector.axes[2][0], 0,
+          connector.axes[0][1], connector.axes[1][1], connector.axes[2][1], 0,
+          connector.axes[0][2], connector.axes[1][2], connector.axes[2][2], 0,
+          0, 0, 0, 1,
         )
-        const quaternion = new THREE.Quaternion().setFromRotationMatrix(basis)
+        const quaternion = new THREE.Quaternion().setFromRotationMatrix(mat)
 
         return (
           <group
@@ -138,9 +128,15 @@ function ConnectorAxes({ joint }: { joint: SceneJoint }) {
             position={[origin.x, origin.y, origin.z]}
             quaternion={quaternion}
           >
-            <primitive object={new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 0.03, 0xff4444)} />
-            <primitive object={new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 0.03, 0x44ff44)} />
-            <primitive object={new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 0.03, 0x4488ff)} />
+            <primitive object={new THREE.ArrowHelper(
+              new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 0.03, 0xff4444
+            )} />
+            <primitive object={new THREE.ArrowHelper(
+              new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 0.03, 0x44ff44
+            )} />
+            <primitive object={new THREE.ArrowHelper(
+              new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 0.03, 0x4488ff
+            )} />
           </group>
         )
       })}
@@ -148,44 +144,21 @@ function ConnectorAxes({ joint }: { joint: SceneJoint }) {
   )
 }
 
-// Removed ErrorBoundary and MeshFallback — let GLTF loader errors surface instead of rendering placeholders.
-
 function ConnectionLine({ joint }: { joint: SceneJoint }) {
-  const joints  = useRobotStore(s => s.joints)
-  const parent  = joints.find(j => j.instanceId === joint.parentInstanceId)
-
   const lineObject = useMemo(() => {
-    if (!parent) return null
-
-    const outputConnector = parent.manifest.connectors.find(c => c.type === 'flange_output')
-      ?? parent.manifest.connectors[0]
-
-    const parentWorld = computeWorldTransform(parent, joints)
-    const childWorld = computeWorldTransform(joint, joints)
-
-    const startOffset = outputConnector
-      ? new THREE.Vector3(
-          outputConnector.origin[0] / 1000,
-          outputConnector.origin[1] / 1000,
-          outputConnector.origin[2] / 1000,
-        )
-      : new THREE.Vector3(0, 0, 0)
-
-    const start = startOffset.applyQuaternion(parentWorld.quaternion).add(parentWorld.position)
-    const end = childWorld.position
+    const start    = new THREE.Vector3(0, 0, 0)
+    const end      = new THREE.Vector3(...joint.position)
     const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
     const material = new THREE.LineBasicMaterial({
       color:       COLORS.accent,
       opacity:     0.4,
       transparent: true,
     })
-
-    const line = new THREE.Line(geometry, material)
+    const line       = new THREE.Line(geometry, material)
     line.renderOrder = 1
-    line.raycast = () => undefined
+    line.raycast     = () => undefined
     return line
-  }, [parent, joint, joints])
+  }, [joint.position])
 
-  if (!lineObject) return null
   return <primitive object={lineObject} />
 }
