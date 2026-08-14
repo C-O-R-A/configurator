@@ -1,0 +1,3 @@
+[submodule "packages/joint_library"]
+	path = packages/joint_library
+	url = https://github.com/C-O-R-A/joint_library.git

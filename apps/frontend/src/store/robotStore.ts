@@ -1,22 +1,9 @@
-// robotStore.ts
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type { SceneJoint, JointManifest } from '../types/manifest'
 import * as THREE from 'three'
-
-function makeRotMat(axes: readonly [
-  readonly [number, number, number],
-  readonly [number, number, number],
-  readonly [number, number, number],
-]): THREE.Matrix4 {
-  return new THREE.Matrix4().set(
-    axes[0][0], axes[1][0], axes[2][0], 0,
-    axes[0][1], axes[1][1], axes[2][1], 0,
-    axes[0][2], axes[1][2], axes[2][2], 0,
-    0,          0,          0,          1,
-  )
-}
+import { bakedQuat, bakedPositionOffset, makeRotMat} from '../lib/connectorMath'
 
 function snapshot(state: { joints: SceneJoint[]; selectedId: string | null }) {
   return {
@@ -130,14 +117,6 @@ export const useRobotStore = create<RobotStore>()(
           const childConn  = manifest.connectors.find(c => c.name === childConnector)
 
           if (parentConn && childConn) {
-            // ── Rotation ────────────────────────────────────────────────────
-            // The child group sits inside a parent connector group that already
-            // applies parentConnQuat. We need the child's input connector to
-            // align with the parent connector frame (i.e. face "into" it).
-            //
-            // In the parent connector frame:
-            //   child.rotQuat * childConnQuat = identity
-            //   => child.rotQuat = inv(childConnQuat)
             const childConnQuat = new THREE.Quaternion()
               .setFromRotationMatrix(makeRotMat(childConn.axes))
 
@@ -146,11 +125,6 @@ export const useRobotStore = create<RobotStore>()(
 
             defaultRotation = [childEuler.x, childEuler.y, childEuler.z]
 
-            // ── Position ────────────────────────────────────────────────────
-            // After applying localQuat, the child's input connector is at
-            // localQuat * childConn.origin in the parent connector frame.
-            // We need that point to be at [0,0,0], so:
-            //   child.position = -(localQuat * childConn.origin)
             const childConnLocalPos = new THREE.Vector3(
               childConn.origin[0] / 1000,
               childConn.origin[1] / 1000,
@@ -168,14 +142,16 @@ export const useRobotStore = create<RobotStore>()(
 
         const newJoint: SceneJoint = {
           instanceId,
-          manifestId:       manifest.id,
+          manifestId:       manifest.jid,
           manifest,
           position:         defaultPosition,
           rotation:         defaultRotation,
+          offset_position:    [0, 0, 0],
+          offset_rotation:    [0, 0, 0],
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
           jointName:        `J${n}`,
-          input:            childConnector  ?? null,
+          input_connector:  childConnector  ?? null,
           parent_connector: parentConnector ?? null,
         }
 
@@ -217,18 +193,35 @@ export const useRobotStore = create<RobotStore>()(
       moveJoint: (instanceId, position) => {
         set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
-          joints: state.joints.map(j =>
-            j.instanceId === instanceId ? { ...j, position } : j
-          ),
+          joints: state.joints.map(j => {
+            if (j.instanceId !== instanceId) return j
+            const offset = bakedPositionOffset(j)
+            const offset_position: [number, number, number] = [
+              position[0] + offset.x,
+              position[1] + offset.y,
+              position[2] + offset.z,
+            ]
+            return { ...j, position, offset_position }
+          }),
         }))
       },
 
       rotateJoint: (instanceId, rotation) => {
         set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
-          joints: state.joints.map(j =>
-            j.instanceId === instanceId ? { ...j, rotation } : j
-          ),
+          joints: state.joints.map(j => {
+            if (j.instanceId !== instanceId) return j
+            const bq         = bakedQuat(j)
+            const storedQuat = new THREE.Quaternion().setFromEuler(
+              new THREE.Euler(rotation[0], rotation[1], rotation[2], 'XYZ')
+            )
+            const displayQuat  = bq.clone().invert().multiply(storedQuat)
+            const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
+            const displayRotation: [number, number, number] = [
+              displayEuler.x, displayEuler.y, displayEuler.z,
+            ]
+            return { ...j, rotation, displayRotation }
+          }),
         }))
       },
 
@@ -237,7 +230,7 @@ export const useRobotStore = create<RobotStore>()(
         set(state => ({
           joints: state.joints.map(j => {
             if (j.instanceId === childId)
-              return { ...j, parentInstanceId: parentId, input: childConnector, parent_connector: parentConnector }
+              return { ...j, parentInstanceId: parentId, input_connector: childConnector, parent_connector: parentConnector }
             if (parentId && j.instanceId === parentId)
               return { ...j, childInstanceIds: [...j.childInstanceIds, childId] }
             return j

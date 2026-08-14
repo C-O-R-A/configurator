@@ -2,47 +2,7 @@ import { useState } from 'react'
 import * as THREE from 'three'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
-
-type JointEntry = ReturnType<typeof useRobotStore.getState>['joints'][number]
-
-function getChildConn(joint: JointEntry) {
-  if (!joint.parentInstanceId || !joint.input) return null
-  return joint.manifest.connectors.find(c => c.name === joint.input)
-    ?? joint.manifest.connectors[0]
-    ?? null
-}
-
-function makeRotMat(axes: readonly [
-  readonly [number, number, number],
-  readonly [number, number, number],
-  readonly [number, number, number],
-]): THREE.Matrix4 {
-  return new THREE.Matrix4().set(
-    axes[0][0], axes[1][0], axes[2][0], 0,
-    axes[0][1], axes[1][1], axes[2][1], 0,
-    axes[0][2], axes[1][2], axes[2][2], 0,
-    0,          0,          0,          1,
-  )
-}
-
-function bakedQuat(joint: JointEntry): THREE.Quaternion {
-  const childConn = getChildConn(joint)
-  if (!childConn) return new THREE.Quaternion()
-  return new THREE.Quaternion()
-    .setFromRotationMatrix(makeRotMat(childConn.axes))
-    .invert()
-}
-
-function bakedPositionOffset(joint: JointEntry): THREE.Vector3 {
-  const childConn = getChildConn(joint)
-  if (!childConn) return new THREE.Vector3()
-  const q = bakedQuat(joint)
-  return new THREE.Vector3(
-    childConn.origin[0] / 1000,
-    childConn.origin[1] / 1000,
-    childConn.origin[2] / 1000,
-  ).applyQuaternion(q).negate()
-}
+import { bakedQuat, bakedPositionOffset } from '../../lib/connectorMath'
 
 export function PropertiesPanel() {
   const { joints, selectedId, removeJoint, renameJoint, selectJoint, moveJoint, rotateJoint } = useRobotStore()
@@ -61,49 +21,39 @@ export function PropertiesPanel() {
 
   const { manifest } = joint
 
-  // ── Display values ────────────────────────────────────────────────────────
-
-  const posOffset = bakedPositionOffset(joint)
-  const displayPosition: [number, number, number] = [
-    joint.position[0] - posOffset.x,
-    joint.position[1] - posOffset.y,
-    joint.position[2] - posOffset.z,
-  ]
-
-  const bq          = bakedQuat(joint)
-  const storedQuat  = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(joint.rotation[0], joint.rotation[1], joint.rotation[2], 'XYZ')
-  )
-  const displayQuat  = bq.clone().invert().multiply(storedQuat)
-  const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
-  const displayRotation: [number, number, number] = [
-    displayEuler.x, displayEuler.y, displayEuler.z,
-  ]
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  const displayPosition = joint.displayPosition
+  const displayRotation = joint.displayRotation
 
   const handlePosChange = (axis: 0 | 1 | 2, raw: string) => {
     const v = parseFloat(raw)
     if (isNaN(v)) return
     const next: [number, number, number] = [...displayPosition] as [number, number, number]
     next[axis] = v
+    // Convert display position back to stored position
+    const offset = bakedPositionOffset(joint)
     moveJoint(joint.instanceId, [
-      next[0] + posOffset.x,
-      next[1] + posOffset.y,
-      next[2] + posOffset.z,
+      next[0] - offset.x,
+      next[1] - offset.y,
+      next[2] - offset.z,
     ])
   }
 
   const handleRotChange = (axis: 0 | 1 | 2, raw: string) => {
     const deg = parseFloat(raw)
     if (isNaN(deg)) return
-    const next: [number, number, number] = [...displayRotation] as [number, number, number]
+    const next: [number, number, number] = [
+      displayRotation[0],
+      displayRotation[1],
+      displayRotation[2],
+    ]
     next[axis] = deg * Math.PI / 180
+    // Convert display rotation back to stored rotation
+    const bq = bakedQuat(joint)
     const inputQuat = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(next[0], next[1], next[2], 'XYZ')
     )
-    const stored  = bq.clone().multiply(inputQuat)
-    const e       = new THREE.Euler().setFromQuaternion(stored, 'XYZ')
+    const stored = bq.clone().multiply(inputQuat)
+    const e = new THREE.Euler().setFromQuaternion(stored, 'XYZ')
     rotateJoint(joint.instanceId, [e.x, e.y, e.z])
   }
 
@@ -146,9 +96,9 @@ export function PropertiesPanel() {
 
         <Section label="Motor Interface">
           <Field label="Type"        value={manifest.motor_interface.type} mono />
-          <Field label="Bolt circle" value={`⌀${manifest.motor_interface.flange_bolt_circle} mm`} mono />
+          <Field label="Bolt circle" value={`⌀${manifest.motor_interface.flange_bolt_circle ?? '—'} mm`} mono />
           <Field label="Bolts"       value={`${manifest.motor_interface.bolt_count}× ${manifest.motor_interface.bolt_size}`} mono />
-          <Field label="Max motor ⌀" value={`${manifest.motor_interface.max_motor_diameter} mm`} mono />
+          <Field label="Max motor ⌀" value={`${manifest.motor_interface.max_motor_diameter ?? '—'} mm`} mono />
         </Section>
 
         {manifest.gearbox?.integrated && (
@@ -205,13 +155,8 @@ export function PropertiesPanel() {
   )
 }
 
-// ── XYZ / RPY row of three separate inputs ───────────────────────────────────
-
 function XYZFields({
-  values,
-  labels,
-  onChange,
-  decimals,
+  values, labels, onChange, decimals,
 }: {
   values:   [number, number, number]
   labels:   [string, string, string]
@@ -234,10 +179,7 @@ function XYZFields({
 }
 
 function XYZInput({
-  label,
-  value,
-  decimals,
-  onChange,
+  label, value, decimals, onChange,
 }: {
   label:    string
   value:    number
@@ -259,7 +201,7 @@ function XYZInput({
           onChange={e => setDraft(e.target.value)}
           onBlur={() => { onChange(draft); setEditing(false) }}
           onKeyDown={e => {
-            if (e.key === 'Enter') { onChange(draft); setEditing(false) }
+            if (e.key === 'Enter')  { onChange(draft); setEditing(false) }
             if (e.key === 'Escape') { setEditing(false) }
           }}
         />
@@ -274,8 +216,6 @@ function XYZInput({
     </div>
   )
 }
-
-// ── Supporting components ────────────────────────────────────────────────────
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -327,124 +267,74 @@ function EditableField({ label, value, onChange }: {
   )
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-
 const styles: Record<string, React.CSSProperties> = {
   panel: {
-    width: 240,
-    height: '100%',
+    width: 240, height: '100%',
     background: COLORS.panel,
     borderLeft: `1px solid ${COLORS.border}`,
-    display: 'flex',
-    flexDirection: 'column',
-    fontFamily: 'Inter, sans-serif',
-    overflow: 'hidden',
+    display: 'flex', flexDirection: 'column',
+    fontFamily: 'Inter, sans-serif', overflow: 'hidden',
   },
   header: {
     padding: '16px 16px 12px',
     borderBottom: `1px solid ${COLORS.border}`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
   },
   title: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
+    fontSize: 11, fontWeight: 600, color: COLORS.textSecondary,
+    textTransform: 'uppercase', letterSpacing: '0.1em',
     fontFamily: 'IBM Plex Mono, monospace',
   },
   deleteBtn: {
     background: 'transparent',
     border: '1px solid rgba(255,80,80,0.3)',
-    color: '#ff5050',
-    borderRadius: 5,
-    padding: '2px 7px',
-    cursor: 'pointer',
-    fontSize: 11,
+    color: '#ff5050', borderRadius: 5,
+    padding: '2px 7px', cursor: 'pointer', fontSize: 11,
   },
   body:  { flex: 1, overflowY: 'auto', padding: '4px 0' },
   empty: {
-    color: COLORS.textDim,
-    fontSize: 12,
-    textAlign: 'center',
-    padding: 24,
-    fontFamily: 'IBM Plex Mono, monospace',
+    color: COLORS.textDim, fontSize: 12, textAlign: 'center',
+    padding: 24, fontFamily: 'IBM Plex Mono, monospace',
   },
   section: {
     padding: '8px 14px',
     borderBottom: '1px solid rgba(255,255,255,0.04)',
   },
   sectionLabel: {
-    fontSize: 9,
-    fontWeight: 600,
-    color: '#4a5a6a',
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
-    fontFamily: 'IBM Plex Mono, monospace',
-    marginBottom: 6,
+    fontSize: 9, fontWeight: 600, color: '#4a5a6a',
+    textTransform: 'uppercase', letterSpacing: '0.12em',
+    fontFamily: 'IBM Plex Mono, monospace', marginBottom: 6,
   },
   field: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '3px 0',
-    gap: 8,
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', padding: '3px 0', gap: 8,
   },
-  fieldLabel: { fontSize: 11, color: '#6a7a90', flexShrink: 0 },
-  fieldValue: { fontSize: 11, color: '#b0c4d8', textAlign: 'right', wordBreak: 'break-all' },
+  fieldLabel:  { fontSize: 11, color: '#6a7a90', flexShrink: 0 },
+  fieldValue:  { fontSize: 11, color: '#b0c4d8', textAlign: 'right', wordBreak: 'break-all' },
   inlineInput: {
-    background:   COLORS.accentGlow,
-    border:       `1px solid ${COLORS.accentBorder}`,
-    borderRadius: 4,
-    color:        COLORS.accent,
-    fontSize:     11,
-    padding:      '2px 6px',
-    fontFamily:   'IBM Plex Mono, monospace',
-    outline:      'none',
-    width:        110,
-    textAlign:    'right',
+    background: COLORS.accentGlow, border: `1px solid ${COLORS.accentBorder}`,
+    borderRadius: 4, color: COLORS.accent, fontSize: 11,
+    padding: '2px 6px', fontFamily: 'IBM Plex Mono, monospace',
+    outline: 'none', width: 110, textAlign: 'right',
   },
-  xyzRow: {
-    display: 'flex',
-    gap: 4,
-    paddingTop: 2,
-  },
-  xyzCell: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-  },
+  xyzRow:  { display: 'flex', gap: 4, paddingTop: 2 },
+  xyzCell: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2 },
   xyzLabel: {
-    fontSize: 9,
-    color: COLORS.textDim,
+    fontSize: 9, color: COLORS.textDim,
     fontFamily: 'IBM Plex Mono, monospace',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
   },
   xyzValue: {
-    fontSize: 10,
-    color: '#b0c4d8',
+    fontSize: 10, color: '#b0c4d8',
     fontFamily: 'IBM Plex Mono, monospace',
-    cursor: 'text',
-    padding: '2px 4px',
-    borderRadius: 3,
-    border: '1px solid transparent',
-    textAlign: 'right' as const,
+    cursor: 'text', padding: '2px 4px', borderRadius: 3,
+    border: '1px solid transparent', textAlign: 'right' as const,
   },
   xyzInput: {
-    width: '100%',
-    background: COLORS.accentGlow,
-    border: `1px solid ${COLORS.accentBorder}`,
-    borderRadius: 3,
-    color: COLORS.accent,
-    fontSize: 10,
-    padding: '2px 4px',
-    fontFamily: 'IBM Plex Mono, monospace',
-    outline: 'none',
-    textAlign: 'right' as const,
-    boxSizing: 'border-box' as const,
+    width: '100%', background: COLORS.accentGlow,
+    border: `1px solid ${COLORS.accentBorder}`, borderRadius: 3,
+    color: COLORS.accent, fontSize: 10, padding: '2px 4px',
+    fontFamily: 'IBM Plex Mono, monospace', outline: 'none',
+    textAlign: 'right' as const, boxSizing: 'border-box' as const,
   },
 }

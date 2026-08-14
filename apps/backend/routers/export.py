@@ -12,12 +12,74 @@ from services.moveit_generator import generate_moveit_config
 
 router = APIRouter(tags=["export"])
 
-JOINT_LIBRARY = Path(__file__).parent.parent.parent.parent / "packages" / "joint-library"
+JOINT_LIBRARY = (
+    Path(__file__).parent.parent.parent.parent / "packages" / "joint-library"
+)
+
+
+def generate_cmake(robot_name: str) -> str:
+    return f"""cmake_minimum_required(VERSION 3.8)
+project({robot_name})
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(xacro REQUIRED)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+
+install(
+  DIRECTORY
+    urdf
+    config
+  DESTINATION share/${'PROJECT_NAME'}
+)
+
+ament_package()
+"""
+
+
+def generate_package_xml(robot_name: str) -> str:
+    return f"""<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+<name>{robot_name}</name>
+<version>0.0.0</version>
+<description>TODO: Package description</description>
+<maintainer email="matthewdelannoy527@gmail.com">matth</maintainer>
+<license>Apache-2.0</license>
+
+<buildtool_depend>ament_cmake</buildtool_depend>
+
+<depend>xacro</depend>
+
+<test_depend>ament_lint_auto</test_depend>
+<test_depend>ament_lint_common</test_depend>
+
+<export>
+    <build_type>ament_cmake</build_type>
+</export>
+</package>
+"""
 
 
 @router.post("/export")
 def export_robot(request: ExportRequest):
-    buf  = io.BytesIO()
+    buf = io.BytesIO()
     name = request.robot_name
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -25,13 +87,15 @@ def export_robot(request: ExportRequest):
 
         # ── Main robot URDF ──────────────────────────────────────────────────
         if "urdf_xacro" in fmt or "urdf" in fmt:
-            zf.writestr(f"{name}/{name}.urdf.xacro", generate_urdf_xacro(request))
+            zf.writestr(f"{name}/urdf/{name}.urdf.xacro", generate_urdf_xacro(request))
 
         if "srdf" in fmt:
-            zf.writestr(f"{name}/{name}.srdf", generate_srdf(request))
+            zf.writestr(f"{name}/urdf/{name}.srdf", generate_srdf(request))
 
         if "ros2_control" in fmt:
-            zf.writestr(f"{name}/config/ros2_controllers.yaml", generate_ros2_control(request))
+            zf.writestr(
+                f"{name}/config/ros2_controllers.yaml", generate_ros2_control(request)
+            )
 
         if "moveit_config" in fmt:
             for filename, content in generate_moveit_config(request).items():
@@ -60,6 +124,8 @@ def export_robot(request: ExportRequest):
                 else:
                     zf.write(file, arcname)
 
+        zf.writestr(f"{name}/CMakeLists.txt", generate_cmake(name))
+        zf.writestr(f"{name}/package.xml", generate_package_xml(name))
         zf.writestr(f"{name}/README.md", _readme(request))
 
     buf.seek(0)
