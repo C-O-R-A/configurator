@@ -144,10 +144,8 @@ export const useRobotStore = create<RobotStore>()(
           instanceId,
           manifestId:       manifest.jid,
           manifest,
-          position:         defaultPosition,
-          rotation:         defaultRotation,
-          offset_position:    [0, 0, 0],
-          offset_rotation:    [0, 0, 0],
+          localPosition:         defaultPosition,
+          localRotation:         defaultRotation,
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
           jointName:        `J${n}`,
@@ -195,13 +193,7 @@ export const useRobotStore = create<RobotStore>()(
         set(state => ({
           joints: state.joints.map(j => {
             if (j.instanceId !== instanceId) return j
-            const offset = bakedPositionOffset(j)
-            const offset_position: [number, number, number] = [
-              position[0] + offset.x,
-              position[1] + offset.y,
-              position[2] + offset.z,
-            ]
-            return { ...j, position, offset_position }
+            return { ...j, localPosition: position }
           }),
         }))
       },
@@ -217,10 +209,10 @@ export const useRobotStore = create<RobotStore>()(
             )
             const displayQuat  = bq.clone().invert().multiply(storedQuat)
             const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
-            const displayRotation: [number, number, number] = [
+            const localRotation: [number, number, number] = [
               displayEuler.x, displayEuler.y, displayEuler.z,
             ]
-            return { ...j, rotation, displayRotation }
+            return { ...j, localRotation }
           }),
         }))
       },

@@ -21,30 +21,21 @@ export function PropertiesPanel() {
 
   const { manifest } = joint
 
-  const displayPosition = joint.displayPosition
-  const displayRotation = joint.displayRotation
-
   const handlePosChange = (axis: 0 | 1 | 2, raw: string) => {
     const v = parseFloat(raw)
     if (isNaN(v)) return
-    const next: [number, number, number] = [...displayPosition] as [number, number, number]
+    const next: [number, number, number] = [...joint.localPosition] as [number, number, number]
     next[axis] = v
-    // Convert display position back to stored position
-    const offset = bakedPositionOffset(joint)
-    moveJoint(joint.instanceId, [
-      next[0] - offset.x,
-      next[1] - offset.y,
-      next[2] - offset.z,
-    ])
+    moveJoint(joint.instanceId, next)
   }
 
   const handleRotChange = (axis: 0 | 1 | 2, raw: string) => {
     const deg = parseFloat(raw)
     if (isNaN(deg)) return
     const next: [number, number, number] = [
-      displayRotation[0],
-      displayRotation[1],
-      displayRotation[2],
+      joint.localRotation[0],
+      joint.localRotation[1],
+      joint.localRotation[2],
     ]
     next[axis] = deg * Math.PI / 180
     // Convert display rotation back to stored rotation
@@ -72,7 +63,7 @@ export function PropertiesPanel() {
 
       <div style={styles.body}>
         <Section label="Joint">
-          <Field label="Type"  value={manifest.type}        mono />
+          <Field label="Type"  value={manifest.joint_type}        mono />
           <Field label="Model" value={manifest.displayName}      />
           <EditableField
             label="Name"
@@ -112,7 +103,7 @@ export function PropertiesPanel() {
 
         <Section label="Position (m)">
           <XYZFields
-            values={displayPosition}
+            values={joint.localPosition}
             labels={['X', 'Y', 'Z']}
             onChange={handlePosChange}
             decimals={4}
@@ -121,7 +112,7 @@ export function PropertiesPanel() {
 
         <Section label="Rotation (°)">
           <XYZFields
-            values={displayRotation.map(v => v * 180 / Math.PI) as [number, number, number]}
+            values={joint.localRotation.map(v => v * 180 / Math.PI) as [number, number, number]}
             labels={['R', 'P', 'Y']}
             onChange={handleRotChange}
             decimals={1}
@@ -137,7 +128,7 @@ export function PropertiesPanel() {
                 : 'base_link (root)'
             }
           />
-          <Field label="Input"  value={joint.input            ?? '—'} mono />
+          <Field label="Input"  value={joint.input_connector  ?? '—'} mono />
           <Field label="Output" value={joint.parent_connector ?? '—'} mono />
           <Field
             label="Children"

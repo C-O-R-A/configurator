@@ -1,4 +1,3 @@
-// JointInstance.tsx
 import { useState, useCallback, useMemo } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -6,6 +5,7 @@ import { JointMesh } from './JointMesh'
 import { useRobotStore } from '../../store/robotStore'
 import type { SceneJoint } from '../../types/manifest'
 import { COLORS } from '../../theme'
+import { bakedPositionOffset, makeRotMat } from '../../lib/connectorMath'
 
 interface JointInstanceProps {
   joint:       SceneJoint
@@ -33,14 +33,24 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
     document.body.style.cursor = 'auto'
   }, [])
 
+  // Convert offset_position (connector-relative) → mesh-origin position for rendering
+  const offset = bakedPositionOffset(joint)
+  const meshPosition: [number, number, number] = joint.parentInstanceId
+    ? [
+        joint.localPosition[0] - offset.x,
+        joint.localPosition[1] - offset.y,
+        joint.localPosition[2] - offset.z,
+      ]
+    : [...joint.localPosition] as [number, number, number]
+
   const childJoints = joints.filter(j => j.parentInstanceId === joint.instanceId)
 
   return (
     <>
       <group
         ref={(node) => onNodeReady(joint.instanceId, node)}
-        position={[joint.position[0], joint.position[1], joint.position[2]]}
-        rotation={[joint.rotation[0], joint.rotation[1], joint.rotation[2]]}
+        position={meshPosition}
+        rotation={[joint.localRotation[0], joint.localRotation[1], joint.localRotation[2]]}
       >
         <JointMesh
           manifest={joint.manifest}
@@ -81,9 +91,6 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
             : new THREE.Quaternion()
 
           return (
-            // Single group at the parent connector — no inner offset group.
-            // The child's stored position/rotation already encodes the
-            // corrective offset so its input connector sits here.
             <group
               key={child.instanceId}
               position={connOrigin}
@@ -146,8 +153,10 @@ function ConnectorAxes({ joint }: { joint: SceneJoint }) {
 
 function ConnectionLine({ joint }: { joint: SceneJoint }) {
   const lineObject = useMemo(() => {
+    // Line from [0,0,0] (parent connector origin) to where the child's
+    // input connector sits — which is offset_position in the parent connector frame
     const start    = new THREE.Vector3(0, 0, 0)
-    const end      = new THREE.Vector3(...joint.position)
+    const end      = new THREE.Vector3(...joint.localPosition)
     const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
     const material = new THREE.LineBasicMaterial({
       color:       COLORS.accent,
@@ -158,7 +167,7 @@ function ConnectionLine({ joint }: { joint: SceneJoint }) {
     line.renderOrder = 1
     line.raycast     = () => undefined
     return line
-  }, [joint.position])
+  }, [joint.localPosition])
 
   return <primitive object={lineObject} />
 }

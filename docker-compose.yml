@@ -12,7 +12,7 @@ services:
     ports: ["8000:8000"]
     volumes: ["./apps/backend:/app", "./packages:/packages"]
     environment:
-      - JOINT_LIBRARY_PATH=/packages/joint-library
+      - JOINT_LIBRARY_PATH=/packages/joint_library
 
   redis:
     image: redis:7-alpine

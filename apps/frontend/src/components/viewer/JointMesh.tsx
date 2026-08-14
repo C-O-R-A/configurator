@@ -15,8 +15,8 @@ interface JointMeshProps {
 }
 
 export function JointMesh({ manifest, selected, hovered, onClick, onPointerOver, onPointerOut }: JointMeshProps) {
-  const meshUrl = `/joint-library/joints/${manifest.id}/${manifest.mesh.visual}`
-  console.debug('Loading joint mesh', manifest.id, meshUrl)
+  const meshUrl = `/joint-library/joints/${manifest.jid}/${manifest.mesh?.visual}`
+  console.debug('Loading joint mesh', manifest.jid, meshUrl)
   const { scene } = useGLTF(meshUrl)
 
   const cloned = useMemo(() => {

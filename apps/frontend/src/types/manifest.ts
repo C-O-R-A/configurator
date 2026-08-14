@@ -1,3 +1,4 @@
+// manifest.ts
 import { z } from 'zod'
 
 export const JointTypeSchema = z.enum([
@@ -89,19 +90,17 @@ export interface SceneJoint {
   instanceId:       string
   manifestId:       string
   manifest:         JointManifest
-  position:         [number, number, number]
-  rotation:         [number, number, number]
-  offset_position:  [number, number, number]
-  offset_rotation:  [number, number, number]
+  localPosition:    [number, number, number]
+  localRotation:    [number, number, number]
   parentInstanceId: string | null
   childInstanceIds: string[]
   jointName:        string
-  input_connector:  'joint_in' | 'joint_out' | null
+  input_connector:            'joint_in' | 'joint_out' | null
   parent_connector: 'joint_in' | 'joint_out' | null
 }
 
 export interface MotorConfig {
-  mcid:                 string
+  mid:                 string
   name:               string
   manufacturer?:      string
   type:               'shaft' | 'flat' | 'hollow'
@@ -122,8 +121,8 @@ export interface MotorConfig {
 }
 
 export interface GearboxConfig {
-  gbid:              string
-  gearbox_type:      'planetary' | 'harmonic' | 'spur' | 'wolfram' | 'none'
+  gbid:                string
+  type:              'planetary' | 'harmonic' | 'spur' | 'wolfrom'
   ratio:             number
   efficiency:        number
   max_input_speed:   number

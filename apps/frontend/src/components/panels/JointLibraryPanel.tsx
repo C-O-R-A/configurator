@@ -37,7 +37,7 @@ export function JointLibraryPanel() {
       j.displayName.toLowerCase().includes(search.toLowerCase()) ||
       j.description?.toLowerCase().includes(search.toLowerCase()) ||
       j.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
-    const matchType = filterType === 'all' || j.type === filterType
+    const matchType = filterType === 'all' || j.joint_type === filterType
     return matchSearch && matchType
   })
 
@@ -109,7 +109,7 @@ export function JointLibraryPanel() {
           ) : (
             filtered.map(j => (
               <JointCard
-                key={j.id}
+                key={j.jid}
                 manifest={j}
                 onAdd={() => handleAdd(j)}
               />
@@ -133,8 +133,8 @@ export function JointLibraryPanel() {
 
 function JointCard({ manifest, onAdd }: { manifest: JointManifest; onAdd: () => void }) {
   const [hovered, setHovered] = useState(false)
-  const color = TYPE_BADGE_COLORS[manifest.type]
-  const icon  = TYPE_ICONS[manifest.type]
+  const color = TYPE_BADGE_COLORS[manifest.joint_type]
+  const icon  = TYPE_ICONS[manifest.joint_type]
 
   return (
     <div

@@ -43,14 +43,14 @@ export function computeDisplayPose(joint: SceneJoint): {
 } {
   const posOffset = bakedPositionOffset(joint)
   const displayPosition: [number, number, number] = [
-    joint.position[0] + posOffset.x,
-    joint.position[1] + posOffset.y,
-    joint.position[2] + posOffset.z,
+    joint.localPosition[0] + posOffset.x,
+    joint.localPosition[1] + posOffset.y,
+    joint.localPosition[2] + posOffset.z,
   ]
 
   const bq         = bakedQuat(joint)
   const storedQuat = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(joint.rotation[0], joint.rotation[1], joint.rotation[2], 'XYZ')
+    new THREE.Euler(joint.localRotation[0], joint.localRotation[1], joint.localRotation[2], 'XYZ')
   )
   const displayQuat  = bq.clone().invert().multiply(storedQuat)
   const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
