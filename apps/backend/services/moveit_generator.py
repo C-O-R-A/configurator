@@ -1,4 +1,5 @@
 """Generates MoveIt 2 config files."""
+
 import math
 from models.schemas import ExportRequest
 
@@ -15,22 +16,39 @@ def generate_moveit_config(req: ExportRequest) -> dict[str, str]:
 
 
 def _kinematics(req: ExportRequest) -> str:
-    return f"""arm:
-  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
-  kinematics_solver_search_resolution: 0.005
-  kinematics_solver_timeout: 0.005
-  kinematics_solver_attempts: 3
-"""
+    dof = sum(1 for j in req.joints if j.manifest.joint_type not in ("fixed",))
+    if 0 < dof < 6:
+        return """arm:
+        kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+        kinematics_solver_search_resolution: 0.005
+        kinematics_solver_timeout: 0.005
+        kinematics_solver_attempts: 3
+        position_only_ik: True
+      """
+
+    elif dof >= 6:
+        return """arm:
+        kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+        kinematics_solver_search_resolution: 0.005
+        kinematics_solver_timeout: 0.005
+        kinematics_solver_attempts: 3
+        position_only_ik: False
+      """
+
+    else:
+        return """
+      # No kinematics solver needed for 0-DOF robot
+      """
 
 
 def _joint_limits(req: ExportRequest) -> str:
     lines = ["joint_limits:"]
     for j in req.joints:
         m = j.manifest
-        if m.type in ("fixed",):
+        if m.joint_type in ("fixed",):
             continue
 
-        if m.type in ("revolute", "continuous", "universal", "spherical"):
+        if m.joint_type in ("revolute", "continuous", "universal", "spherical"):
             max_vel = (m.specs.max_speed or 180) * math.pi / 180
             max_acc = max_vel * 0.5
             max_eff = m.specs.max_torque or 10.0
@@ -43,7 +61,7 @@ def _joint_limits(req: ExportRequest) -> str:
                 f"    has_effort_limits: true",
                 f"    max_effort: {max_eff:.2f}",
             ]
-        elif m.type == "prismatic":
+        elif m.joint_type == "prismatic":
             max_vel = m.specs.max_speed or 0.1
             max_acc = max_vel * 0.5
             max_eff = m.specs.max_force or 100.0
@@ -62,9 +80,7 @@ def _joint_limits(req: ExportRequest) -> str:
 
 def _moveit_controllers(req: ExportRequest) -> str:
     joint_names = "\n".join(
-        f"    - {j.jointName}"
-        for j in req.joints
-        if j.manifest.type not in ("fixed",)
+        f"    - {j.jointName}" for j in req.joints if j.manifest.joint_type not in ("fixed",)
     )
     return f"""moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
 

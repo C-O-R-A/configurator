@@ -6,7 +6,7 @@ from models.schemas import ExportRequest
 def generate_ros2_control(req: ExportRequest) -> str:
     joints_yaml = ""
     for j in req.joints:
-        if j.manifest.type in ("fixed",):
+        if j.manifest.joint_type in ("fixed",):
             continue
         joints_yaml += f"""
     {j.jointName}:
@@ -52,6 +52,6 @@ def _joint_name_list(req: ExportRequest) -> str:
     names = [
         f"      - {j.jointName}"
         for j in req.joints
-        if j.manifest.type not in ("fixed",)
+        if j.manifest.joint_type not in ("fixed",)
     ]
     return "\n".join(names)

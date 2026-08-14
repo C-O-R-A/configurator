@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': { target: apiTarget, changeOrigin: true },
-        '/joint-library': { target: apiTarget, changeOrigin: true },
+        '/joint_library': { target: apiTarget, changeOrigin: true },
       },
     },
   }

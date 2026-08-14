@@ -5,6 +5,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from routers import joints, export
 
+from config import JOINT_LIBRARY
+
 app = FastAPI(title="Cobot Configurator API", version="0.1.0")
 
 app.add_middleware(
@@ -17,14 +19,16 @@ app.add_middleware(
 app.include_router(joints.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
 
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
-JOINT_LIBRARY = Path(__file__).parent.parent.parent / "packages" / "joint-library"
 
 if JOINT_LIBRARY.exists():
-    app.mount("/joint-library", StaticFiles(directory=JOINT_LIBRARY), name="joint-library")
+    app.mount(
+        "/joint_library", StaticFiles(directory=JOINT_LIBRARY), name="joint_library"
+    )
 
 # Serve built frontend
 DIST = Path(__file__).parent.parent / "frontend" / "dist"

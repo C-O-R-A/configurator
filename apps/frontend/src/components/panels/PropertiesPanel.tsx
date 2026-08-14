@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import * as THREE from 'three'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
-import { bakedQuat, bakedPositionOffset } from '../../lib/connectorMath'
 
 export function PropertiesPanel() {
   const { joints, selectedId, removeJoint, renameJoint, selectJoint, moveJoint, rotateJoint } = useRobotStore()
@@ -38,14 +36,7 @@ export function PropertiesPanel() {
       joint.localRotation[2],
     ]
     next[axis] = deg * Math.PI / 180
-    // Convert display rotation back to stored rotation
-    const bq = bakedQuat(joint)
-    const inputQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(next[0], next[1], next[2], 'XYZ')
-    )
-    const stored = bq.clone().multiply(inputQuat)
-    const e = new THREE.Euler().setFromQuaternion(stored, 'XYZ')
-    rotateJoint(joint.instanceId, [e.x, e.y, e.z])
+    rotateJoint(joint.instanceId, next)
   }
 
   return (

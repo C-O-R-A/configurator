@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, Suspense } from 'react'
+import { useState, useCallback, useEffect, Suspense, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport, TransformControls } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
@@ -6,8 +6,7 @@ import * as THREE from 'three'
 import { JointInstance } from './JointInstance'
 import { useRobotStore } from '../../store/robotStore'
 import { COLORS } from '../../theme'
-
-import { useRef } from 'react'
+import { connectorMatrix, decompose } from '../../lib/connectorMath'
 
 type TransformMode = 'translate' | 'rotate' | null
 
@@ -51,7 +50,6 @@ export function Viewport3D() {
   const jointNodeMap = useRef<Record<string, THREE.Group | null>>({})
   const [moveJoint, rotateJoint]              = useRobotStore(s => [s.moveJoint, s.rotateJoint])
 
-  // Clear selected node when selection changes
   useEffect(() => {
     setSelectedNode(null)
   }, [selectedId])
@@ -71,12 +69,35 @@ export function Viewport3D() {
     setSelectedNode(jointNodeMap.current[selectedId] ?? null)
   }, [selectedId])
 
+  // TransformControls drags `selectedNode`, which is the MESH group —
+  // positioned in mesh space (parent-connector space corrected by the
+  // child connector's own offset). The store's localPosition/localRotation
+  // are connector-to-connector values, a different frame. Convert back:
+  //   jointFrame = meshLocal * childConnMat
   const handleTransformChange = useCallback(() => {
     if (!selectedNode || !selectedId) return
-    const pos = selectedNode.position
-    const rot = selectedNode.rotation
-    moveJoint(selectedId, [pos.x, pos.y, pos.z])
-    rotateJoint(selectedId, [rot.x, rot.y, rot.z])
+
+    const joint = useRobotStore.getState().joints.find(j => j.instanceId === selectedId)
+    if (!joint) return
+
+    selectedNode.updateMatrix()
+    const meshLocal = selectedNode.matrix.clone()
+
+    let jointFrame: THREE.Matrix4
+    if (joint.parentInstanceId) {
+      const childConn =
+        joint.manifest.connectors.find(c => c.name === joint.input_connector)
+        ?? joint.manifest.connectors[0]
+      const childConnMat = childConn ? connectorMatrix(childConn) : new THREE.Matrix4()
+      jointFrame = meshLocal.clone().multiply(childConnMat)
+    } else {
+      // Root joint: mesh space IS connector space, nothing to undo.
+      jointFrame = meshLocal
+    }
+
+    const { position, rotation } = decompose(jointFrame)
+    moveJoint(selectedId, position)
+    rotateJoint(selectedId, rotation)
   }, [selectedNode, selectedId, moveJoint, rotateJoint])
 
   return (
@@ -141,7 +162,6 @@ export function Viewport3D() {
           <pointLight position={[-2, 2, -2]} intensity={0.5} color="#4080ff" />
           <fog attach="fog" args={[COLORS.background, 8, 25]} />
 
-          {/* TransformControls at scene root — not inside rotated group */}
           {selectedId && selectedNode && transformMode && (
             <TransformControls
               object={selectedNode}
@@ -151,7 +171,6 @@ export function Viewport3D() {
             />
           )}
 
-          {/* Z-up scene */}
           <group rotation={[Math.PI / 2, 0, 0]}>
             {gridVisible && (
               <Grid

@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type { SceneJoint, JointManifest } from '../types/manifest'
-import * as THREE from 'three'
-import { bakedQuat, bakedPositionOffset, makeRotMat} from '../lib/connectorMath'
 
 function snapshot(state: { joints: SceneJoint[]; selectedId: string | null }) {
   return {
@@ -105,47 +103,20 @@ export const useRobotStore = create<RobotStore>()(
 
         const n          = ++linkCounter
         const instanceId = uuid()
-        const parent     = parentId
-          ? get().joints.find(j => j.instanceId === parentId)
-          : null
 
-        let defaultPosition: [number, number, number] = [0, 0, 0]
-        let defaultRotation: [number, number, number] = [0, 0, 0]
-
-        if (parent && parentConnector && childConnector) {
-          const parentConn = parent.manifest.connectors.find(c => c.name === parentConnector)
-          const childConn  = manifest.connectors.find(c => c.name === childConnector)
-
-          if (parentConn && childConn) {
-            const childConnQuat = new THREE.Quaternion()
-              .setFromRotationMatrix(makeRotMat(childConn.axes))
-
-            const localQuat  = childConnQuat.clone().invert()
-            const childEuler = new THREE.Euler().setFromQuaternion(localQuat, 'XYZ')
-
-            defaultRotation = [childEuler.x, childEuler.y, childEuler.z]
-
-            const childConnLocalPos = new THREE.Vector3(
-              childConn.origin[0] / 1000,
-              childConn.origin[1] / 1000,
-              childConn.origin[2] / 1000,
-            )
-            const rotatedOffset = childConnLocalPos.clone().applyQuaternion(localQuat)
-
-            defaultPosition = [
-              -rotatedOffset.x,
-              -rotatedOffset.y,
-              -rotatedOffset.z,
-            ]
-          }
-        }
+        // localPosition/localRotation is the child-input-connector pose
+        // expressed in the parent-output-connector frame. On connect, those
+        // two connectors coincide by definition — so this is always zero.
+        // Root joints (no parent) spawn at the world origin.
+        const defaultPosition: [number, number, number] = [0, 0, 0]
+        const defaultRotation: [number, number, number] = [0, 0, 0]
 
         const newJoint: SceneJoint = {
           instanceId,
           manifestId:       manifest.jid,
           manifest,
-          localPosition:         defaultPosition,
-          localRotation:         defaultRotation,
+          localPosition:    defaultPosition,
+          localRotation:    defaultRotation,
           parentInstanceId: parentId ?? null,
           childInstanceIds: [],
           jointName:        `J${n}`,
@@ -188,32 +159,23 @@ export const useRobotStore = create<RobotStore>()(
 
       selectJoint: (instanceId) => set({ selectedId: instanceId }),
 
+      // localPosition IS the value the user edits — no mesh-space conversion.
       moveJoint: (instanceId, position) => {
         set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
-          joints: state.joints.map(j => {
-            if (j.instanceId !== instanceId) return j
-            return { ...j, localPosition: position }
-          }),
+          joints: state.joints.map(j =>
+            j.instanceId === instanceId ? { ...j, localPosition: position } : j
+          ),
         }))
       },
 
+      // localRotation IS the value the user edits — no bakedQuat round trip.
       rotateJoint: (instanceId, rotation) => {
         set(state => ({ past: [...state.past, snapshot(state)], future: [] }))
         set(state => ({
-          joints: state.joints.map(j => {
-            if (j.instanceId !== instanceId) return j
-            const bq         = bakedQuat(j)
-            const storedQuat = new THREE.Quaternion().setFromEuler(
-              new THREE.Euler(rotation[0], rotation[1], rotation[2], 'XYZ')
-            )
-            const displayQuat  = bq.clone().invert().multiply(storedQuat)
-            const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
-            const localRotation: [number, number, number] = [
-              displayEuler.x, displayEuler.y, displayEuler.z,
-            ]
-            return { ...j, localRotation }
-          }),
+          joints: state.joints.map(j =>
+            j.instanceId === instanceId ? { ...j, localRotation: rotation } : j
+          ),
         }))
       },
 
@@ -222,7 +184,15 @@ export const useRobotStore = create<RobotStore>()(
         set(state => ({
           joints: state.joints.map(j => {
             if (j.instanceId === childId)
-              return { ...j, parentInstanceId: parentId, input_connector: childConnector, parent_connector: parentConnector }
+              return {
+                ...j,
+                parentInstanceId: parentId,
+                input_connector: childConnector,
+                parent_connector: parentConnector,
+                // re-connecting also resets to the identity frame
+                localPosition: [0, 0, 0],
+                localRotation: [0, 0, 0],
+              }
             if (parentId && j.instanceId === parentId)
               return { ...j, childInstanceIds: [...j.childInstanceIds, childId] }
             return j

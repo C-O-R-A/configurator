@@ -5,7 +5,7 @@ import { JointMesh } from './JointMesh'
 import { useRobotStore } from '../../store/robotStore'
 import type { SceneJoint } from '../../types/manifest'
 import { COLORS } from '../../theme'
-import { bakedPositionOffset, makeRotMat } from '../../lib/connectorMath'
+import { meshLocalMatrix, decompose } from '../../lib/connectorMath'
 
 interface JointInstanceProps {
   joint:       SceneJoint
@@ -33,15 +33,12 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
     document.body.style.cursor = 'auto'
   }, [])
 
-  // Convert offset_position (connector-relative) → mesh-origin position for rendering
-  const offset = bakedPositionOffset(joint)
-  const meshPosition: [number, number, number] = joint.parentInstanceId
-    ? [
-        joint.localPosition[0] - offset.x,
-        joint.localPosition[1] - offset.y,
-        joint.localPosition[2] - offset.z,
-      ]
-    : [...joint.localPosition] as [number, number, number]
+  // Mesh-origin pose, expressed in the parent output-connector's local space
+  // (or scene space for root joints). Derived purely for rendering.
+  const { position: meshPosition, rotation: meshRotation } = useMemo(
+    () => decompose(meshLocalMatrix(joint)),
+    [joint]
+  )
 
   const childJoints = joints.filter(j => j.parentInstanceId === joint.instanceId)
 
@@ -50,7 +47,7 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
       <group
         ref={(node) => onNodeReady(joint.instanceId, node)}
         position={meshPosition}
-        rotation={[joint.localRotation[0], joint.localRotation[1], joint.localRotation[2]]}
+        rotation={meshRotation}
       >
         <JointMesh
           manifest={joint.manifest}
@@ -64,7 +61,6 @@ export function JointInstance({ joint, isSelected, onNodeReady }: JointInstanceP
         <ConnectorAxes joint={joint} />
 
         {childJoints.map(child => {
-          // Find the connector on this joint the child attaches to
           const parentConn = joint.manifest.connectors.find(
             c => c.name === child.parent_connector
           ) ?? joint.manifest.connectors.find(
@@ -152,9 +148,9 @@ function ConnectorAxes({ joint }: { joint: SceneJoint }) {
 }
 
 function ConnectionLine({ joint }: { joint: SceneJoint }) {
+  // localPosition is now the connector-to-connector offset directly —
+  // zero length when the joint is spawned/left connected as-is.
   const lineObject = useMemo(() => {
-    // Line from [0,0,0] (parent connector origin) to where the child's
-    // input connector sits — which is offset_position in the parent connector frame
     const start    = new THREE.Vector3(0, 0, 0)
     const end      = new THREE.Vector3(...joint.localPosition)
     const geometry = new THREE.BufferGeometry().setFromPoints([start, end])

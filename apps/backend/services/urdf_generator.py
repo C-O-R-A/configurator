@@ -60,10 +60,11 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
     m = j.manifest
     child_input = j.input_connector or "joint_in"
 
-    # Use display values computed by the frontend.
-    # These are already relative to the connected state (zero at spawn).
-    pos = j.position
-    rot = j.rotation
+    # localPosition/localRotation is the child-input-connector pose
+    # expressed in the parent-output-connector frame — exactly what
+    # a URDF <origin> under parent_connection expects.
+    pos = j.localPosition
+    rot = j.localRotation
 
     return [
         f"  <xacro:{m.jid}",
@@ -77,7 +78,6 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
         f"  </xacro:{m.jid}>",
         "",
     ]
-
 
 def generate_srdf(req: ExportRequest) -> str:
     chain_start = "base_link"

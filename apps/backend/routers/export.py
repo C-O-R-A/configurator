@@ -9,12 +9,9 @@ from models.schemas import ExportRequest
 from services.urdf_generator import generate_urdf_xacro, generate_srdf
 from services.ros2_control_generator import generate_ros2_control
 from services.moveit_generator import generate_moveit_config
+from config import JOINT_LIBRARY
 
 router = APIRouter(tags=["export"])
-
-JOINT_LIBRARY = (
-    Path(__file__).parent.parent.parent.parent / "packages" / "joint-library"
-)
 
 
 def generate_cmake(robot_name: str) -> str:
@@ -106,7 +103,7 @@ def export_robot(request: ExportRequest):
         # expected ROS 2 package structure: {joint_id}_description/urdf/
         seen_joint_types: set[str] = set()
         for joint in request.joints:
-            jid = joint.manifest.id
+            jid = joint.manifest.jid
             if jid in seen_joint_types:
                 continue
             seen_joint_types.add(jid)
@@ -138,7 +135,7 @@ def export_robot(request: ExportRequest):
 
 def _readme(req: ExportRequest) -> str:
     joint_list = "\n".join(
-        f"  - {j.jointName} ({j.manifest.type}, {j.manifest.displayName})"
+        f"  - {j.jointName} ({j.manifest.joint_type}, {j.manifest.displayName})"
         for j in req.joints
     )
     return f"""# {req.robot_name} — Robot Configuration

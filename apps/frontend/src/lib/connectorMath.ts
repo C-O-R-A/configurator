@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import type { SceneJoint } from '../types/manifest'
+import type { SceneJoint, Connector } from '../types/manifest'
 
+/** Rotation matrix from a connector's 3x3 axis basis (columns = local X/Y/Z, in parent space). */
 export function makeRotMat(axes: readonly [
   readonly [number, number, number],
   readonly [number, number, number],
@@ -14,49 +15,65 @@ export function makeRotMat(axes: readonly [
   )
 }
 
-export function bakedQuat(joint: SceneJoint): THREE.Quaternion {
-  if (!joint.parentInstanceId || !joint.input_connector) return new THREE.Quaternion()
-  const childConn = joint.manifest.connectors.find(c => c.name === joint.input_connector)
-    ?? joint.manifest.connectors[0]
-  if (!childConn) return new THREE.Quaternion()
-  return new THREE.Quaternion()
-    .setFromRotationMatrix(makeRotMat(childConn.axes))
-    .invert()
+/** Full transform of a connector frame, expressed in its own joint's mesh-origin space. */
+export function connectorMatrix(connector: Connector): THREE.Matrix4 {
+  const m = makeRotMat(connector.axes)
+  m.setPosition(
+    connector.origin[0] / 1000,
+    connector.origin[1] / 1000,
+    connector.origin[2] / 1000,
+  )
+  return m
 }
 
-export function bakedPositionOffset(joint: SceneJoint): THREE.Vector3 {
-  if (!joint.parentInstanceId || !joint.input_connector) return new THREE.Vector3()
-  const childConn = joint.manifest.connectors.find(c => c.name === joint.input_connector)
-    ?? joint.manifest.connectors[0]
-  if (!childConn) return new THREE.Vector3()
-  const q = bakedQuat(joint)
-  return new THREE.Vector3(
-    childConn.origin[0] / 1000,
-    childConn.origin[1] / 1000,
-    childConn.origin[2] / 1000,
-  ).applyQuaternion(q).negate()
+/**
+ * The joint's stored/edited frame: child-input-connector pose, expressed in
+ * parent-output-connector space. This is the ONLY transform the UI edits and
+ * the ONLY transform written to URDF <origin>.
+ */
+export function jointFrameMatrix(joint: SceneJoint): THREE.Matrix4 {
+  return new THREE.Matrix4().compose(
+    new THREE.Vector3(...joint.localPosition),
+    new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(joint.localRotation[0], joint.localRotation[1], joint.localRotation[2], 'XYZ')
+    ),
+    new THREE.Vector3(1, 1, 1),
+  )
 }
 
-export function computeDisplayPose(joint: SceneJoint): {
+function findConnector(joint: SceneJoint, name: string | null): Connector | undefined {
+  if (!name) return joint.manifest.connectors[0]
+  return joint.manifest.connectors.find(c => c.name === name) ?? joint.manifest.connectors[0]
+}
+
+/**
+ * Mesh-origin transform for this joint, expressed in the parent's output
+ * connector space (i.e. what to apply to the <group> rendered at the parent
+ * connector). Root joints have no connector to compose against, so their
+ * stored frame IS the mesh transform directly.
+ *
+ *   meshLocal = jointFrame * childConnMat⁻¹
+ */
+export function meshLocalMatrix(joint: SceneJoint): THREE.Matrix4 {
+  if (!joint.parentInstanceId) {
+    return jointFrameMatrix(joint)
+  }
+  const childConn = findConnector(joint, joint.input_connector)
+  if (!childConn) return jointFrameMatrix(joint)
+
+  const childConnInv = new THREE.Matrix4().copy(connectorMatrix(childConn)).invert()
+  return jointFrameMatrix(joint).multiply(childConnInv)
+}
+
+/** Decompose a matrix into the [pos, eulerXYZ] tuples the R3F components want. */
+export function decompose(m: THREE.Matrix4): {
   position: [number, number, number]
   rotation: [number, number, number]
 } {
-  const posOffset = bakedPositionOffset(joint)
-  const displayPosition: [number, number, number] = [
-    joint.localPosition[0] + posOffset.x,
-    joint.localPosition[1] + posOffset.y,
-    joint.localPosition[2] + posOffset.z,
-  ]
-
-  const bq         = bakedQuat(joint)
-  const storedQuat = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(joint.localRotation[0], joint.localRotation[1], joint.localRotation[2], 'XYZ')
-  )
-  const displayQuat  = bq.clone().invert().multiply(storedQuat)
-  const displayEuler = new THREE.Euler().setFromQuaternion(displayQuat, 'XYZ')
-
-  return {
-    position: displayPosition,
-    rotation: [displayEuler.x, displayEuler.y, displayEuler.z],
-  }
+  const pos = new THREE.Vector3()
+  const quat = new THREE.Quaternion()
+  const scale = new THREE.Vector3()
+  m.decompose(pos, quat, scale)
+  const e = new THREE.Euler().setFromQuaternion(quat, 'XYZ')
+  return { position: [pos.x, pos.y, pos.z], rotation: [e.x, e.y, e.z] }
 }

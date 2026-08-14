@@ -4,12 +4,10 @@ import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from models.schemas import JointManifest
-
+from config import JOINT_LIBRARY
 router = APIRouter(tags=["joints"])
 
-LIBRARY_PATH = Path(
-    os.environ.get("JOINT_LIBRARY_PATH", "/packages/joint_library")
-)
+LIBRARY_PATH = JOINT_LIBRARY
 
 
 def load_all_manifests() -> list[dict]:
