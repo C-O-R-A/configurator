@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            dist_script: dist:linux
+            artifact_glob: dist/*.AppImage
+          - os: windows-latest
+            dist_script: dist:win
+            artifact_glob: dist/*.exe
+          - os: macos-latest
+            dist_script: dist:mac
+            artifact_glob: dist/*.dmg
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install root + workspace deps
+        run: npm install
+
+      - name: Build backend with PyInstaller
+        working-directory: apps/backend
+        run: |
+          pip install -r requirements.txt --break-system-packages
+          pip install pyinstaller --break-system-packages
+          pyinstaller --onefile --name cora-backend main.py
+
+      - name: Build Electron app (${{ matrix.dist_script }})
+        run: npm run ${{ matrix.dist_script }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cora-${{ matrix.os }}
+          path: ${{ matrix.artifact_glob }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PRERELEASE_FLAG=""
+          if [[ "$TAG" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            release-assets/*/* \
+            --title "$TAG" \
+            --generate-notes \
+            $PRERELEASE_FLAG
