@@ -29,6 +29,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
+          submodules: recursive
+
+      - name: Pull LFS files in joint_library
+        run: git -C packages/joint_library lfs pull
 
       - uses: actions/setup-node@v4
         with:
