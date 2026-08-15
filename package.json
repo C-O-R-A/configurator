@@ -34,12 +34,13 @@
     "productName": "cora-configurator",
     "files": [
       "electron.js",
+      "assets/**/*",
       "apps/frontend/dist/**/*"
     ],
     "extraResources": [
       {
-        "from": "apps/backend/dist/cora-backend",
-        "to": "backend/cora-backend"
+        "from": "apps/backend/dist",
+        "to": "backend"
       },
       {
         "from": "apps/frontend/dist",
@@ -50,9 +51,9 @@
         "to": "joint_library"
       }
     ],
-    "linux": { "target": ["AppImage", "deb", "rpm"], "icon": "assets/icon.png" },
+    "linux": { "target": ["AppImage", "deb", "rpm"], "icon": "assets/icons/512x512.png" },
     "deb": { "afterInstall": "after-install.sh" },
-    "mac":   { "target": "dmg" },
-    "win":   { "target": "nsis" }
+    "mac":   { "target": "dmg", "icon": "assets/icon.icns" },
+    "win":   { "target": "nsis", "icon": "assets/icon.ico" }
   }
 }

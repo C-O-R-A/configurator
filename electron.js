@@ -13,7 +13,8 @@ function startBackend() {
   if (app.isPackaged) {
     // Packaged: use the PyInstaller-frozen binary + frontend build,
     // both shipped via electron-builder's extraResources.
-    backendPath = path.join(process.resourcesPath, 'backend', 'cora-backend')
+    const backendBinaryName = process.platform === 'win32' ? 'cora-backend.exe' : 'cora-backend'
+    backendPath = path.join(process.resourcesPath, 'backend', backendBinaryName)
     args = []
     cwd = path.join(process.resourcesPath, 'backend')
     env = {
@@ -23,7 +24,10 @@ function startBackend() {
     }
   } else {
     // Dev: use the venv Python, frontend served relative to the repo as usual.
-    backendPath = path.join(__dirname, '.venv', 'bin', 'python3')
+    const pythonBinaryName = process.platform === 'win32'
+      ? path.join('Scripts', 'python.exe')
+      : path.join('bin', 'python3')
+    backendPath = path.join(__dirname, '.venv', pythonBinaryName)
     args = ['-m', 'uvicorn', 'main:app', '--port', '8000']
     cwd = path.join(__dirname, 'apps', 'backend')
     env = process.env
