@@ -1,5 +1,8 @@
 {
   "name": "cobot-configurator",
+  "version": "0.1.0-alpha",
+  "description": "Modular cobot joint configurator with 3D viewer, URDF/XACRO export, and MoveIt 2 config generation",
+  "author": "CORA",
   "private": true,
   "main": "electron.js",
   "workspaces": [
