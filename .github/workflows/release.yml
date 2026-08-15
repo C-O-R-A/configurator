@@ -46,7 +46,7 @@ jobs:
         run: |
           pip install -r requirements.txt --break-system-packages
           pip install pyinstaller --break-system-packages
-          pyinstaller --onefile --name cora-backend main.py
+          pyinstaller --onefile --name cora-backend --exclude-module matplotlib main.py
 
       - name: Build Electron app (${{ matrix.dist_script }})
         run: npm run ${{ matrix.dist_script }} -- --publish=never
