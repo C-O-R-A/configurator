@@ -1,16 +1,21 @@
-cd ./apps/backend
-pip install pyinstaller --break-system-packages
-pyinstaller --onefile --name cora-backend main.py
-# produces apps/backend/dist/cora-backend
+cd ~/Desktop/CORA/Software/cora_configurator
 
+# rebuild backend (with matplotlib exclusion)
+cd apps/backend
+source .venv-build/bin/activate
+pyinstaller --onefile --name cora-backend --exclude-module matplotlib main.py
+deactivate
+cd ../..
+
+# rebuild electron package
 npm run dist:linux
-npm run dist:windows
-npm run dist:mac
 
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0-alpha
+# uninstall old, install fresh
+sudo apt remove cobot-configurator
+sudo apt install ./dist/cobot-configurator_0.1.0-alpha_amd64.deb
 
-gh release create v0.1.0 \
-  "dist/CORA Configurator-0.1.0.AppImage" \
-  --title "v0.1.0" \
-  --generate-notes
+# reapply sandbox permission fix (resets every install)
+sudo chown root:root "/opt/cora-configurator/chrome-sandbox"
+sudo chmod 4755 "/opt/cora-configurator/chrome-sandbox"
+
+cobot-configurator

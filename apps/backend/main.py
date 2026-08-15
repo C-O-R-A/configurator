@@ -26,7 +26,7 @@ from config import JOINT_LIBRARY
 
 if JOINT_LIBRARY.exists():
     app.mount(
-        "/joint-library", StaticFiles(directory=JOINT_LIBRARY), name="joint-library"
+        "/joint_library", StaticFiles(directory=JOINT_LIBRARY), name="joint_library"
     )
 
 # Serve built frontend.

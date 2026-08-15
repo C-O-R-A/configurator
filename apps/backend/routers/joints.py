@@ -46,6 +46,6 @@ def list_joints():
 @router.get("/joints/{joint_id}", response_model=JointManifest)
 def get_joint(joint_id: str):
     for m in load_all_manifests():
-        if m.get("id") == joint_id:
+        if m.get("jid") == joint_id:
             return m
     raise HTTPException(status_code=404, detail=f"Joint '{joint_id}' not found")

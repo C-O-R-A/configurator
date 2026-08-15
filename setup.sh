@@ -4,6 +4,8 @@ if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi
 
+git submodule update --init --recursive
+
 source .venv/bin/activate
 pip install -r apps/backend/requirements.txt
 
