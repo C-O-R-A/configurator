@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .venv/
 .vscode/
+build/
+*.log
+.venv-build/

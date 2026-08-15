@@ -40,6 +40,14 @@
       {
         "from": "apps/backend/dist/cora-backend",
         "to": "backend/cora-backend"
+      },
+      {
+        "from": "apps/frontend/dist",
+        "to": "frontend/dist"
+      },
+      {
+        "from": "packages/joint_library",
+        "to": "joint_library"
       }
     ],
     "linux": { "target": ["AppImage", "deb", "rpm"], "icon": "assets/icon.png" },

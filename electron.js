@@ -5,24 +5,31 @@ const path = require('path')
 let mainWindow
 let backendProcess
 
-app.disableHardwareAcceleration()
+// app.disableHardwareAcceleration()
 
 function startBackend() {
-  let backendPath, args, cwd
+  let backendPath, args, cwd, env
 
   if (app.isPackaged) {
-    // Packaged: use the PyInstaller-frozen binary bundled as an extraResource
+    // Packaged: use the PyInstaller-frozen binary + frontend build,
+    // both shipped via electron-builder's extraResources.
     backendPath = path.join(process.resourcesPath, 'backend', 'cora-backend')
     args = []
     cwd = path.join(process.resourcesPath, 'backend')
+    env = {
+      ...process.env,
+      CORA_FRONTEND_DIST: path.join(process.resourcesPath, 'frontend', 'dist'),
+      JOINT_LIBRARY_PATH: path.join(process.resourcesPath, 'joint_library'),
+    }
   } else {
-    // Dev: use the venv Python
+    // Dev: use the venv Python, frontend served relative to the repo as usual.
     backendPath = path.join(__dirname, '.venv', 'bin', 'python3')
     args = ['-m', 'uvicorn', 'main:app', '--port', '8000']
     cwd = path.join(__dirname, 'apps', 'backend')
+    env = process.env
   }
 
-  backendProcess = spawn(backendPath, args, { cwd })
+  backendProcess = spawn(backendPath, args, { cwd, env })
   backendProcess.stdout.on('data', d => console.log(`backend: ${d}`))
   backendProcess.stderr.on('data', d => console.error(`backend: ${d}`))
 }
