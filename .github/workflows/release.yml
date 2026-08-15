@@ -49,7 +49,7 @@ jobs:
           pyinstaller --onefile --name cora-backend main.py
 
       - name: Build Electron app (${{ matrix.dist_script }})
-        run: npm run ${{ matrix.dist_script }}
+        run: npm run ${{ matrix.dist_script }} -- --publish=never
 
       - name: Upload artifact to the release
         env:
