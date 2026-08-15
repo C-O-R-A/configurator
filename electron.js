@@ -5,17 +5,24 @@ const path = require('path')
 let mainWindow
 let backendProcess
 
-// If the host has no discrete GPU or problematic GPU drivers,
-// disabling hardware acceleration prevents Chromium GPU errors
-// shown by packaged shortcuts on some systems.
 app.disableHardwareAcceleration()
 
 function startBackend() {
-  const venvPython = path.join(__dirname, '.venv', 'bin', 'python3')
-  backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--port', '8000'], {
-    cwd: path.join(__dirname, 'apps', 'backend'),
-  })
+  let backendPath, args, cwd
 
+  if (app.isPackaged) {
+    // Packaged: use the PyInstaller-frozen binary bundled as an extraResource
+    backendPath = path.join(process.resourcesPath, 'backend', 'cora-backend')
+    args = []
+    cwd = path.join(process.resourcesPath, 'backend')
+  } else {
+    // Dev: use the venv Python
+    backendPath = path.join(__dirname, '.venv', 'bin', 'python3')
+    args = ['-m', 'uvicorn', 'main:app', '--port', '8000']
+    cwd = path.join(__dirname, 'apps', 'backend')
+  }
+
+  backendProcess = spawn(backendPath, args, { cwd })
   backendProcess.stdout.on('data', d => console.log(`backend: ${d}`))
   backendProcess.stderr.on('data', d => console.error(`backend: ${d}`))
 }
@@ -33,13 +40,12 @@ function createWindow() {
 
   mainWindow.setMenuBarVisibility(true)
 
-  // Wait for backend to be ready before loading
   const tryLoad = (attempts = 0) => {
     fetch('http://localhost:8000/api/health')
       .then(() => mainWindow.loadURL('http://localhost:8000'))
       .catch(() => {
         if (attempts < 20) setTimeout(() => tryLoad(attempts + 1), 500)
-        else mainWindow.loadURL('http://localhost:8000')  // try anyway
+        else mainWindow.loadURL('http://localhost:8000')
       })
   }
 

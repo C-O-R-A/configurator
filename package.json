@@ -1,19 +1,30 @@
 {
-  "name": "cobot-configurator",
+  "name": "cora-configurator",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "main": "electron.js",
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=apps/frontend\" \"npm run dev --workspace=apps/backend\"",
-    "dev:frontend": "npm run dev --workspace=apps/frontend",
     "build": "npm run build --workspace=apps/frontend",
-    "start": "electron electron.js"
+    "start": "electron electron.js",
+    "dist:linux": "npm run build && electron-builder --linux AppImage",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:win": "npm run build && electron-builder --win nsis"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.0",
-    "electron": "^43.0.0"
-  },
-  "main": "electron.js"
+  "build": {
+    "appId": "org.cora.configurator",
+    "productName": "CORA Configurator",
+    "files": [
+      "electron.js",
+      "apps/frontend/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "apps/backend/dist/cora-backend",
+        "to": "backend/cora-backend"
+      }
+    ],
+    "linux": { "target": "AppImage", "icon": "assets/icon.png" },
+    "mac":   { "target": "dmg" },
+    "win":   { "target": "nsis" }
+  }
 }
