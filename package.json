@@ -51,6 +51,7 @@
       }
     ],
     "linux": { "target": ["AppImage", "deb", "rpm"], "icon": "assets/icon.png" },
+    "deb": { "afterInstall": "after-install.sh" },
     "mac":   { "target": "dmg" },
     "win":   { "target": "nsis" }
   }
