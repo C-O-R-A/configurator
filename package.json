@@ -1,4 +1,7 @@
 {
+  "overrides": {
+    "@noble/hashes": "1.3.3"
+  },
   "name": "cobot-configurator",
   "version": "0.1.0-alpha",
   "description": "Modular cobot joint configurator with 3D viewer, URDF/XACRO export, and MoveIt 2 config generation",
@@ -25,7 +28,7 @@
   },
   "build": {
     "appId": "org.cora.configurator",
-    "productName": "CORA Configurator",
+    "productName": "cora-configurator",
     "files": [
       "electron.js",
       "apps/frontend/dist/**/*"
