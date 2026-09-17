@@ -1,42 +1,25 @@
 # CORA — Cobot Configurator
 
-> Modular cobot joint configurator with 3D viewer, URDF/XACRO export, MoveIt 2 config generation, and parametric STEP file generation via CadQuery and the Onshape API.
+Modular cobot joint configurator with an interactive 3D editor, export pipeline (URDF/XACRO, MoveIt 2, ros2_control), and parametric STEP generation via CadQuery or Onshape.
 
 ![CORA Pipeline](assets/DOC/pipeline.png)
 
----
+## Summary
 
-## Stack
+- Purpose: let users compose modular robot arms from reusable joint modules, tune mechanical parameters, preview assemblies in 3D, and generate the set of artifacts needed for ROS 2 integration and manufacturing.
+- Primary components: a React + TypeScript frontend with a WebGL 3D viewer, and a FastAPI backend that handles templating, parametric CAD generation, and export orchestration.
 
-| Layer | Tech |
-|---|---|
-| Frontend | React + TypeScript + Vite |
-| 3D Viewer | @react-three/fiber + drei |
-| State | Zustand |
-| Schema validation | Zod (joint manifest contract) |
-| Backend | FastAPI (Python) |
-| Parametric CAD (fallback) | CadQuery → STEP |
-| Authoritative CAD export | Onshape REST API → STEP |
-| File templating | Jinja2 → URDF / XACRO / SRDF / YAML |
-| ROS 2 | Jazzy + ros2_control + MoveIt 2 + Gazebo |
+## What this repository contains
 
----
+- apps/frontend — React + TypeScript configurator and 3D viewer (Vite, @react-three/fiber)
+- apps/backend — FastAPI backend: REST API, Jinja2 templating for URDF/SRDF/YAML, Onshape/CadQuery export pipeline
+- packages/joint_library — Joint manifests, meshes, and CadQuery scripts (extensible plugin-style joint packages)
+- assets — docs, diagrams and auxiliary files
+- top-level utilities and scripts: `run.sh`, `docker-compose.yml`, `setup.sh`, `requirements.txt` (Python deps), frontend `package.json` (Node deps)
 
-## Architecture Overview
+## Quick start — development
 
-CORA is a monorepo with three concerns:
-
-1. **Web Configurator** — users compose a robot from a library of modular joints, set parameters (gear ratio, bore diameter, module), and request exports.
-2. **FastAPI Backend** — orchestrates CAD generation, file templating, and the Onshape export pipeline. Adding a new joint type requires only dropping a folder; no code changes needed.
-3. **Onshape CAD Pipeline** — each user export spins up an ephemeral copy of the master joint document, applies the requested configuration, exports a STEP file, then deletes the copy. The master template is never modified.
-
-See [`assets/pipeline.png`](assets/DOC/pipeline.png) for the full system diagram (also available as [`assets/pipeline.drawio`](assets/DOC/pipeline.drawio) for editing).
-
----
-
-## Quick Start
-
-### Frontend only (no backend needed — uses mock data)
+Frontend (mock mode, no backend required):
 
 ```bash
 cd apps/frontend
@@ -45,155 +28,105 @@ npm run dev
 # Open http://localhost:5173
 ```
 
-### Full stack
+Backend (API + export services):
+
+```bash
+cd apps/backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+Full stack (two terminals):
 
 ```bash
 # Terminal 1 — frontend
 cd apps/frontend && npm install && npm run dev
 
 # Terminal 2 — backend
-cd apps/backend
-pip install -r requirements.txt
+cd apps/backend && source .venv/bin/activate && pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### Docker
+Docker (single-command stack):
 
 ```bash
-docker-compose up
+docker-compose up --build
 ```
 
-### Onshape STEP export (optional)
+## Onshape STEP export (optional)
 
-STEP export from the UI requires Onshape API credentials. Without them, CadQuery is used as a fallback for parametric geometry.
+The project supports two STEP-generation paths:
+- Onshape authoritative export (requires API credentials and a configured master document)
+- CadQuery parametric fallback (runs locally when Onshape credentials are not present)
+
+Set Onshape credentials in your environment to enable Onshape exports:
 
 ```bash
 export ONSHAPE_ACCESS_KEY=your_access_key
 export ONSHAPE_SECRET_KEY=your_secret_key
 ```
 
-Generate keys at [dev-portal.onshape.com/keys](https://dev-portal.onshape.com/keys). See [Onshape CAD Pipeline](#onshape-cad-pipeline) below for the full setup.
+Generate keys at https://dev-portal.onshape.com/keys and consult `apps/backend/services/ephemeral_pipeline.py` and `apps/backend/services/onshape_client.py` for the integration details.
 
----
+If credentials are not provided the backend will use CadQuery-based generators found in `packages/joint_library/*/*.py`.
 
-## Project Structure
+## Repository layout (key files)
 
-```
-cobot-configurator/
-├── apps/
-│   ├── frontend/                        # React + R3F viewer
-│   │   └── src/
-│   │       ├── components/
-│   │       │   ├── viewer/              # 3D viewport, joint meshes
-│   │       │   ├── panels/              # Library panel, properties panel
-│   │       │   └── ui/                  # Topbar
-│   │       ├── store/                   # Zustand robot state
-│   │       ├── types/                   # Zod schemas (manifest contract)
-│   │       └── joints/                  # Mock data for offline dev
-│   └── backend/                         # FastAPI
-│       ├── routers/                     # /api/joints, /api/export
-│       ├── services/                    # URDF, SRDF, MoveIt, ros2_control generators
-│       │   ├── onshape_client.py        # HMAC-authenticated async Onshape client
-│       │   ├── ephemeral_pipeline.py    # Copy → configure → export → delete lifecycle
-│       │   └── step_exporter.py        # gear_ratio_to_params(), config encoding
-│       └── models/                      # Pydantic schemas
-├── packages/
-│   └── joint-library/                   # Joint manifests + meshes + CadQuery scripts
-│       └── joints/
-│           └── revolute_80mm/           # Reference joint implementation
-│               ├── manifest.json        # ← the extensibility contract
-│               ├── revolute_80mm.glb    # Visual mesh
-│               ├── revolute_80mm_collision.glb
-│               └── revolute_80mm.py    # CadQuery parametric STEP generator
-└── assets/
-    ├── pipeline.png                     # Full system pipeline diagram
-    └── pipeline.drawio                  # Editable source (diagrams.net)
-```
+- `apps/frontend/` — UI, 3D viewer, manifest typings
+- `apps/backend/main.py` — FastAPI app entry
+- `apps/backend/routers/` — API endpoints (`/api/joints`, `/api/export`)
+- `apps/backend/services/` — export and templating logic (`urdf_generator.py`, `ros2_control_generator.py`, `moveit_generator.py`, `urdf_generator.py`, `onshape_client.py`, `ephemeral_pipeline.py`)
+- `packages/joint_library/joints/` — each joint is a directory with `manifest.json`, meshes (`*.glb`), and an optional `*.py` CadQuery script
 
----
+## Adding a new joint (developer guide)
 
-## Adding a New Joint
+1. Create `packages/joint_library/joints/your_joint_name/`.
+2. Add a `manifest.json` (copy an existing manifest from `R120` or `R105` and edit).
+3. Provide visual/collision meshes (`your_joint.glb`, `your_joint_collision.glb`).
+4. Optionally add `your_joint.py` (CadQuery parametric script) to enable local STEP exports.
+5. Restart the backend — the new joint is discovered automatically and available in the frontend.
 
-1. Create a folder: `packages/joint-library/joints/your_joint_name/`
-2. Add `manifest.json` (copy from `revolute_80mm` and edit)
-3. Add `your_joint.glb` (visual mesh) and `your_joint_collision.glb`
-4. Add `your_joint.py` (CadQuery parametric script)
-5. Restart the backend — the joint appears automatically in the UI
+The `manifest.json` conforms to a Zod schema declared in the frontend types; keep the manifest fields aligned with `apps/frontend/src/types/manifest.ts`.
 
-**That's it. No code changes required.**
+## Export artifacts
 
-The `manifest.json` is the extensibility contract. Its Zod schema (`src/types/`) is the single source of truth for what a joint must declare — joint type, kinematic parameters, connector layout, gear ratio range, and Onshape document references for authoritative CAD export.
+An export operation bundles the following artifacts into a zip for download:
 
----
+- `robot.step` — STEP (Onshape or CadQuery)
+- `robot.urdf.xacro` — URDF/XACRO (Jinja2 templates)
+- `ros2_control.yaml` — ros2_control hardware parameters
+- `robot.srdf` — MoveIt SRDF planning groups
+- `moveit_config/` — MoveIt 2 package (launch files + configs)
+- `meshes/` — exported or packaged meshes used by the URDF
 
-## Onshape CAD Pipeline
+All geometry and units follow REP-103 conventions: Z-up, metres, radians.
 
-CORA uses the Onshape REST API to generate authoritative STEP files from fully parametric master joint documents. The pipeline is designed so the master template is never modified by user requests.
+## Onshape configuration variables
 
-### How it works
+Master joint documents expose configuration entries such as `num_teeth_input`, `num_teeth_output`, `gear_module`, `bore_diameter`, and `joint_length`. The backend helper `gear_ratio_to_params()` maps float ratios to integer tooth counts that satisfy the document constraints.
 
-```
-User requests Onshape export
-        │
-        ▼
-POST /documents/{did}/w/{wid}/copy          → Copy Onshape template doc
-        │
-        ▼
-DELETE /documents/{ephemeral_did}           → Delete Unused joints/parts
-        │
-        ▼
-       (?)                                  → Assemble robot according to robot config json
-        │
-        ▼
-       (?)                                  -> share/link to onshape doc
-```
+## Development notes & tips
 
-### Configuration variables
+- Frontend dev server proxies API calls to `http://localhost:8000` when running locally; check `apps/frontend/vite.config.ts` for proxy settings.
+- Backend has Jinja2 templates under `apps/backend/templates/` — edit templates to change URDF/ros2_control/moveit output.
+- Local STEP generation relies on CadQuery; if you intend to use CadQuery locally, install the required native dependencies (see `apps/backend/requirements.txt`).
+- There are helpful scripts at the repository root: `run.sh`, `run.py`, `launch.sh` — inspect them for automation convenience.
 
-Each master joint document exposes these Onshape Configuration Variables:
+## Troubleshooting
 
-| Variable | Description |
-|---|---|
-| `num_teeth_input` | Driving gear tooth count |
-| `num_teeth_output` | Driven gear tooth count |
-| `gear_module` | Gear module in mm (1.0 / 1.5 / 2.0) |
-| `bore_diameter` | Shaft bore in mm |
-| `joint_length` | Axial joint length in mm |
+- If exports fail due to missing Onshape credentials, the backend falls back to CadQuery when a local generator exists for the joint.
+- Onshape API limits may throttle bulk export usage; for CI or automated pipelines consider a service account with sufficient quota.
+- If a joint doesn't appear in the UI after adding it, verify `manifest.json` against the frontend schema and restart the backend.
 
-`gear_ratio_to_params()` converts a float ratio (e.g. `5.0`) to the nearest valid integer tooth-count pair within physical constraints.
+## Contributing
 
-<!-- ### When you don't need the copy/delete pipeline
+Contributions are welcome. High-level suggestions:
 
-If all parameters are exposed as Onshape Configuration Variables, the config is applied per-request as a stateless microversion parameter — the original document is never touched and concurrent users can't interfere. The ephemeral copy pipeline is used when you need to modify feature variables directly in the feature tree, or for future "save to my Onshape account" functionality. -->
+- Add new joint packages under `packages/joint_library/joints/`.
+- Improve Jinja2 templates in `apps/backend/templates/` for downstream tooling.
+- Fix frontend bugs or add features in `apps/frontend/src/`.
 
----
+Please open issues or PRs describing the change and include steps to reproduce when relevant.
 
-## Export Artifacts
-
-Each configuration export produces a zip containing:
-
-| File | Generator | Consumed by |
-|---|---|---|
-| `robot.step` | Onshape API / CadQuery | Manufacturing, CAM |
-| `robot.urdf.xacro` | Jinja2 | ROS 2, Gazebo |
-| `ros2_control.yaml` | Jinja2 | ros2_control hardware interface |
-| `robot.srdf` | Jinja2 | MoveIt 2 planning groups |
-| `moveit_config/` | Jinja2 | Full MoveIt 2 package (launch + config) |
-| `meshes/` | CadQuery / GLB | URDF visual + collision geometry |
-
-All geometry follows [REP-103](https://www.ros.org/reps/rep-0103.html) conventions: Z-up, metres, radians.
-
----
-
-### API limits
-
-Onshape enforces annual API call limits per account (enforced from 2025). The ephemeral pipeline costs approximately 7–15 calls per export (including translation polling).
-
----
-
-# Notes
-1. Robot Configs: Simple overview of all existing project configs
-2. Configurator: Actual robot configurator window
-3. Export: For selecting export options and artifacts, should also display follow up steps
-4. Motor and joint setup: Hardware setup from the script created in the other board. Should also run some tests
-5. Robot assembly and setup: Runs a setup and test script to see if everything is there, like all the joints, homing sequence etc.
