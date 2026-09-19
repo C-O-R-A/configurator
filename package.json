@@ -6,9 +6,9 @@
   "version": "0.1.0-alpha",
   "description": "Modular cobot joint configurator with 3D viewer, URDF/XACRO export, and MoveIt 2 config generation",
   "author": {
-      "name": "CORA",
-      "email": "cora@rsadelft.nl"
-    },
+    "name": "CORA",
+    "email": "cora@rsadelft.nl"
+  },
   "private": true,
   "main": "electron.js",
   "workspaces": [
@@ -18,11 +18,17 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=apps/frontend\" \"npm run dev --workspace=apps/backend\"",
     "dev:frontend": "npm run dev --workspace=apps/frontend",
+
     "build": "npm run build --workspace=apps/frontend",
+
+    "build:backend:win": "cd apps/backend && python -m PyInstaller --clean --onefile --name cora-backend --exclude-module matplotlib main.py",
+    "build:backend:linux": "cd apps/backend && python3 -m PyInstaller --clean --onefile --name cora-backend --exclude-module matplotlib main.py",
+
     "start": "electron electron.js",
-    "dist:linux": "npm run build && electron-builder --linux",
+
+    "dist:linux": "npm run build && npm run build:backend:linux && electron-builder --linux",
     "dist:mac": "npm run build && electron-builder --mac dmg",
-    "dist:win": "npm run build && electron-builder --win nsis"
+    "dist:win": "npm run build && npm run build:backend:win && electron-builder --win nsis"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
@@ -32,11 +38,13 @@
   "build": {
     "appId": "org.cora.configurator",
     "productName": "cora-configurator",
+
     "files": [
       "electron.js",
       "assets/**/*",
       "apps/frontend/dist/**/*"
     ],
+
     "extraResources": [
       {
         "from": "apps/backend/dist",
@@ -51,9 +59,28 @@
         "to": "joint_library"
       }
     ],
-    "linux": { "target": ["AppImage", "deb", "rpm"], "icon": "assets/icons/512x512.png" },
-    "deb": { "afterInstall": "after-install.sh" },
-    "mac":   { "target": "dmg", "icon": "assets/icon.icns" },
-    "win":   { "target": "nsis", "icon": "assets/icon.ico" }
+
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "assets/icons/512x512.png"
+    },
+
+    "deb": {
+      "afterInstall": "after-install.sh"
+    },
+
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
   }
 }
