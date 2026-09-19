@@ -1,3 +1,16 @@
+'''
+Export CORA Config files from configurator scene to zip.
+this export includes:
+- URDF XACRO for the robot
+- SRDF for the robot
+- ros2_control.xacro configuration for the robot
+- Combined URDF of the robot
+- Joint limits for MoveIt planning
+- Kinematics configuration for MoveIt planning
+- Servo Params
+'''
+
+
 import os
 from pathlib import Path
 from fastapi import APIRouter
@@ -14,6 +27,9 @@ from config import JOINT_LIBRARY
 router = APIRouter(tags=["export"])
 
 
+# TODO: #8 BUG — the install DESTINATION below renders as the literal string
+# "share/PROJECT_NAME": the $ and braces are missing. Should be
+# share/${PROJECT_NAME}. The exported package installs to the wrong path.
 def generate_cmake(robot_name: str) -> str:
     return f"""cmake_minimum_required(VERSION 3.8)
 project({robot_name})
@@ -50,6 +66,12 @@ ament_package()
 """
 
 
+# TODO: #8 the generated package.xml declares only <depend>xacro</depend>.
+# It needs the moveit / ros2_control / controller_manager deps, plus one
+# <depend> per "<jid>_description" package the generated URDF includes.
+# TODO: #8 the maintainer is hardcoded to a personal address; make it
+# configurable. (Keep these notes OUT of the f-string below — a literal
+# "{...}" in there is parsed as a format field and raises at runtime.)
 def generate_package_xml(robot_name: str) -> str:
     return f"""<?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
@@ -94,35 +116,14 @@ def export_robot(request: ExportRequest):
                 f"{name}/config/ros2_controllers.yaml", generate_ros2_control(request)
             )
 
+        # TODO: #2 emit config/robot_layout.yaml here — the contract that lets
+        # cora_common stop hardcoding J1..J6 / endeffector / arm / arm_controller.
+        # This blocks C-O-R-A/cora_common#1, #2 and #3.
+        # TODO: #3 emit config/initial_positions.yaml (required for xacro to expand).
+        # TODO: #9 emit launch/ and config/moveit.rviz — nothing is launchable today.
         if "moveit_config" in fmt:
             for filename, content in generate_moveit_config(request).items():
                 zf.writestr(f"{name}/config/{filename}", content)
-
-        # ── Per-joint XACRO files ─────────────────────────────────────────────
-        # Each unique joint type gets its own folder in the zip matching the
-        # expected ROS 2 package structure: {joint_id}_description/urdf/
-        seen_joint_types: set[str] = set()
-        for joint in request.joints:
-            jid = joint.manifest.jid
-            if jid in seen_joint_types:
-                continue
-            seen_joint_types.add(jid)
-
-            joint_dir = JOINT_LIBRARY / "joints" / jid / "description"
-            if not joint_dir.exists():
-                continue
-
-            # Copy everything in the joint's description folder, including directories
-            for file in joint_dir.rglob("*"):
-                rel = file.relative_to(JOINT_LIBRARY / "joints" / jid)
-                arcname = f"{jid}_description/{rel.as_posix()}"
-                if file.is_dir():
-                    zf.write(file, arcname.rstrip("/") + "/")
-                else:
-                    zf.write(file, arcname)
-
-        zf.writestr(f"{name}/CMakeLists.txt", generate_cmake(name))
-        zf.writestr(f"{name}/package.xml", generate_package_xml(name))
         zf.writestr(f"{name}/README.md", _readme(request))
 
     buf.seek(0)

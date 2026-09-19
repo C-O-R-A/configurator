@@ -1,3 +1,15 @@
+# TODO: #4 generate_urdf_xacro() emits only the bare kinematic chain. The
+# cora_common launch pipeline needs a top-level xacro with hardware_type /
+# gripper_package / initial_positions_file args, a ros2_control include, and a
+# Gazebo branch. Compare cora_moveit_config/config/cora.urdf.xacro.
+#
+# NOTE: this file must keep emitting LITERAL TEXT for the kinematic structure.
+# It cannot become a generic xacro that loops robot_layout.yaml, because
+# (a) xacro:include with a computed filename inside a macro does not register
+# the included macros, and (b) the joint-library macros take *origin as a block
+# parameter, which cannot be synthesised from YAML data. Verified on Jazzy —
+# see C-O-R-A/configurator#1. The ros2_control blocks CAN be YAML-driven (#5).
+
 # urdf_generator.py
 """
 Generates robot.urdf.xacro from the scene graph.
@@ -71,6 +83,9 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
         f'    prefix="{prefix}"',
         f'    parent_connection="{parent_connection}"',
         f'    input="{child_input}"',
+        # TODO: #7 effort/velocity are never passed, so the URDF keeps the macro
+        # defaults (effort=10, velocity=1) while joint_limits.yaml derives
+        # max_velocity 3.14 from the SAME manifest's specs.max_speed. They disagree.
         f'    lower="{m.parameters.limits.min}"',
         f'    upper="{m.parameters.limits.max}">',
         f'    <origin xyz="{pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}"',
@@ -79,11 +94,19 @@ def _joint_xml(j: SceneJoint, prefix: str, parent_connection: str) -> list[str]:
         "",
     ]
 
+# TODO: #6 no disable_collisions pairs are emitted at all. Adjacent pairs are
+# free (parent/child is known); Never pairs need a self-collision sweep.
+# Without them planning self-collision-rejects immediately — cora.srdf has 12.
+# TODO: #6 also missing: an arm_with_gripper group and an <end_effector> element.
 def generate_srdf(req: ExportRequest) -> str:
     chain_start = "base_link"
+    # TODO: #6 BUG — this is a JOINT name, not a link. The tip link is
+    # f"{req.joints[-1].jointName}_joint_out". SRDF load fails as written.
     chain_end = req.joints[-1].jointName if req.joints else "base_link"
 
     joint_lines = "\n".join(
+        # TODO: #6 BUG — group_state joints need a value="..." attribute.
+        # As written this is invalid SRDF.
         f'    <joint name="{j.jointName}"/>'
         for j in req.joints
         if j.manifest.joint_type not in ("fixed",)

@@ -4,6 +4,10 @@ import math
 from models.schemas import ExportRequest
 
 
+# TODO: #3 initial_positions.yaml is NOT in this dict, but cora_common's
+# cora.urdf.xacro and all three ros2_control xacros call xacro.load_yaml on
+# it. Without it xacro hard-fails and the exported package cannot boot.
+# TODO: #9 moveit.rviz is also missing; move.launch.py requires it.
 def generate_moveit_config(req: ExportRequest) -> dict[str, str]:
     """Returns a dict of {filename: content} for all MoveIt config files."""
     return {
@@ -15,6 +19,8 @@ def generate_moveit_config(req: ExportRequest) -> dict[str, str]:
     }
 
 
+# TODO: #7 only emits the "arm" group. Needs one entry per planning group
+# listed in robot_layout.yaml (cora_common also has arm_with_gripper).
 def _kinematics(req: ExportRequest) -> str:
     dof = sum(1 for j in req.joints if j.manifest.joint_type not in ("fixed",))
     if 0 < dof < 6:
@@ -41,6 +47,8 @@ def _kinematics(req: ExportRequest) -> str:
       """
 
 
+# TODO: #7 missing the default_velocity_scaling_factor /
+# default_acceleration_scaling_factor header keys that cora_common carries.
 def _joint_limits(req: ExportRequest) -> str:
     lines = ["joint_limits:"]
     for j in req.joints:
@@ -64,6 +72,8 @@ def _joint_limits(req: ExportRequest) -> str:
         elif m.joint_type == "prismatic":
             max_vel = m.specs.max_speed or 0.1
             max_acc = max_vel * 0.5
+            # TODO: #7 BUG — JointSpecs has no max_force field (models/schemas.py:7-13).
+            # AttributeError on any prismatic joint. Add the field or fall back.
             max_eff = m.specs.max_force or 100.0
             lines += [
                 f"  {j.jointName}:",
@@ -78,6 +88,12 @@ def _joint_limits(req: ExportRequest) -> str:
     return "\n".join(lines) + "\n"
 
 
+# TODO: #7 BUG — the returned YAML puts `arm_controller` at document top level
+# instead of nested under `moveit_simple_controller_manager`.
+# MoveItSimpleControllerManager reads moveit_simple_controller_manager.<name>.type,
+# so it never finds the controller. Compare cora_moveit_config/config/
+# moveit_controllers.yaml, which nests correctly.
+# TODO: #7 also: no gripper controller is ever emitted.
 def _moveit_controllers(req: ExportRequest) -> str:
     joint_names = "\n".join(
         f"    - {j.jointName}" for j in req.joints if j.manifest.joint_type not in ("fixed",)

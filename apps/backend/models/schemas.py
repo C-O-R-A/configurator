@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 class JointSpecs(BaseModel):
     mass:             float
+    # TODO: #7 no max_force field, but moveit_generator.py references
+    # specs.max_force for prismatic joints -> AttributeError.
     max_torque:       Optional[float] = None
     max_speed:        Optional[float] = None
     housing_diameter: Optional[float] = None
@@ -126,6 +128,9 @@ class GearboxConfig(BaseModel):
     catalog:           Literal["standard", "custom"] = "standard"
 
 
+# TODO: #2 add a RobotLayout model here (base_frame, ee_frame, arm_joints,
+# gripper_joints, mimic_joints, planning_groups, controllers, hardware/node_id)
+# and emit it as robot_layout.yaml. See C-O-R-A/configurator#1 for the schema.
 class ExportRequest(BaseModel):
     robot_name:     str
     joints:         list[SceneJoint]
